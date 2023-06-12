@@ -2,19 +2,25 @@
 
 
 
+# <img src="https://raw.githubusercontent.com/nateshirley/codespeak-assets/main/speaker.png" style="zoom:17%;" /> Codespeak
+
+Codespeak lets you write python in natural language while maintaining complete interop with your existing stack and preserving real-time, deterministic execution.
 
 
-# Codespeak
 
-Write python logic in natural language.
+## Installation
 
-<br>
+`pip install codespeak` or `poetry add codespeak`
 
-<br>
+See [getting started](#getting-started) for API key config.
 
-To use Codespeak, declare a function and describe its goal with a docstring. Then, call the function. Let's look at a simple example:
+## Usage
+
+Declare a function with the `@codespeak()` decorator and describe its goal with a docstring. Then, call the function:
 
 ```python
+from codespeak import codespeak
+
 @codespeak()
 def add_two(x: int, y: int) -> int:
   """add two numbers together"""
@@ -24,13 +30,11 @@ result = add_two(1, 3)
 print(result) # output: 4  
 ```
 
-Codespeak uses a function's declaration to understand its intent and write an appropriate implementation. When the function is called, the generated implementation is executed.
+Codespeak uses function declarations to understand program intent and write corresponding implementations. When Codespeak functions are called, their generated implementations are executed.
 
-<br>
+### Use type hints to create reliable, highly-capable functions
 
-<br>
-
-With Codespeak, proper type hints expand the reliability and capability of functions. Let's look at a more complex example:
+Proper type hints allow Codespeak to write more complex code inside your existing projects. Let's look at another example:
 
 ```python
 from sqlalchemy.orm.session import Session
@@ -40,27 +44,19 @@ from my_models import User, Order
 @codespeak()
 def orders_for_user_since_date(session: Session, user: User, since_date: datetime) -> List[Order]:
   """return all of the orders for the user placed after the given date"""
-
-
 ```
 
-When compared to the first example, this function requires more advanced logic, but its type hints contain much richer information about the data that the function is operating on. To write an implementation for this function, Codespeak will navigate through its types and use them to understand how to accomplish the function's goal. Here, the types should contain plenty of information to generate an appropriate function body. 
+When compared to the first example, this function requires more advanced logic, but its type hints contain much richer information about the data that the function will operate on. 
 
-To use this function, simply declare it as shown above, and then call it.
+To generate code for the above function, Codespeak will navigate through the function's types and use them to understand how to accomplish its goal. Here, the types should contain plenty of information to implement the function.
 
-<br>
+If using this function, simply declare it as shown above, and then call it.
 
-<br>
+### Maintain real-time, deterministic execution
 
-### Determinism and real-time execution
+When Codespeak detects a new and/or different function, it writes new code for it. Otherwise, functions are executed deterministically and in real-time.
 
-As long as a function's declaration remain constant, it will be executed deterministically and in real-time. 
-
-<br>
-
-<br>
-
-Here's fizzbuzz in Codespeak.
+Here's fizzbuzz in Codespeak:
 
 ```python
 @codespeak()
@@ -74,31 +70,42 @@ def fizzbuzz(limit: int) -> None:
   """
 ```
 
-The first time fizzbuzz() is called, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, a checksum of the declaration in the project's filesystem is compared with the current declaration. If the declaration has changed, new code will be generated and executed. Otherwise, the previous implementation is immediately retrieved and re-used.
+The first time fizzbuzz() is called in your project, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, the current version is compared with the previous using a checksum. 
 
-<br>
+When changes are detected, new code is generated and executed. Otherwise, the previous implementation is executed in real-time.
 
-In production environments, Codespeak assumes all functions have unchanged, existing logic. Therefore, they are executed with near-zero overhead. 
+In production environments, Codespeak assumes all functions are unchanged and executes them with near-zero overhead.
 
-<br>
+To configure production settings, use an environment variable `ENVIRONMENT=PROD` or call `codespeak.set_environment("prod")`
 
-<br>
+### Use tests to guarantee execution properties
 
-<br>
+Alongside type hints, tests allow Codespeak to guarantee specific properties in your functions.
 
-### Testing
+When writing code for a function with tests, Codespeak will rewrite and execute its code until the tests pass.
 
-Besides type hints, tests can be used to ensure accuracy of codegen.
+To apply a test to a function, simply pass it into the `@codespeak()` decorator as an argument:
 
-....pass tests into decorator...codegen runs tests and re-uses the results to generate new code until the tests are satisfied
+```python
+def test_add_two():
+  assert add_two(1, 3) == 4
+ 
+@codespeak(test_add_two)
+def add_two(x: int, y: int) -> int:
+  """add two numbers together"""
+```
 
-<br>
+Currently, Codespeak tests are run exclusively as pytest functions.
 
-<br>
+### Access and manipulate generated logic in your file system
 
-<br>
+When Codespeak implements your functions, they are written to the file system in a `codespeak_generated/` directory under the same hiearchy as they are defined.
 
-### Why
+Each function is implemented in its own file, named after the function. To view or edit logic for a function, simply visit the file at [function_name].
+
+
+
+## Why would I use this?
 
 - English is easy to write
 - Explicitly pairing prompt-context to programming logic ensures that any information used to create a block of code is easily accessible and editable in the future
@@ -107,7 +114,23 @@ Besides type hints, tests can be used to ensure accuracy of codegen.
 
 
 
+## Getting started
 
+Codespeak needs to be configured with an OpenAI API key (access your keys [here](https://platform.openai.com/account/api-keys)). 
+
+The library will automatically use an environment variable `OPENAI_API_KEY` if one exists:
+
+```python
+export OPENAI_API_KEY='sk-...'
+```
+
+Otherwise, set it explicitly with `codespeak.set_openai_api_key()`:
+
+```python
+import codespeak
+
+codespeak.set_openai_api_key("sk-...")
+```
 
 
 

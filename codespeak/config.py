@@ -16,14 +16,16 @@ class Config(BaseModel):
     @staticmethod
     def from_env():
         env = os.getenv("ENVIRONMENT")
-        if env and env in [e.value for e in Environment]:
-            return Config(
-                openai_api_key=os.getenv("OPENAI_API_KEY"), environment=Environment(env)
-            )
-        else:
-            return Config(
-                openai_api_key=os.getenv("OPENAI_API_KEY"), environment=Environment.DEV
-            )
+        if env:
+            env = env.lower()
+            if env in [e.value for e in Environment]:
+                return Config(
+                    openai_api_key=os.getenv("OPENAI_API_KEY"),
+                    environment=Environment(env),
+                )
+        return Config(
+            openai_api_key=os.getenv("OPENAI_API_KEY"), environment=Environment.DEV
+        )
 
 
 _config = Config.from_env()
