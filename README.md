@@ -8,9 +8,9 @@
 
 Write python logic in natural language.
 
+<br>
 
-
-
+<br>
 
 To use Codespeak, declare a function and describe its goal with a docstring. Then, call the function. Let's look at a simple example:
 
@@ -26,9 +26,9 @@ print(result) # output: 4
 
 Codespeak uses a function's declaration to understand its intent and write an appropriate implementation. When the function is called, the generated implementation is executed.
 
+<br>
 
-
-
+<br>
 
 With Codespeak, proper type hints expand the reliability and capability of functions. Let's look at a more complex example:
 
@@ -48,15 +48,17 @@ When compared to the first example, this function requires more advanced logic, 
 
 To use this function, simply declare it as shown above, and then call it.
 
+<br>
 
-
-
+<br>
 
 ### Determinism and real-time execution
 
 As long as a function's declaration remain constant, it will be executed deterministically and in real-time. 
 
+<br>
 
+<br>
 
 Here's fizzbuzz in Codespeak.
 
@@ -74,11 +76,15 @@ def fizzbuzz(limit: int) -> None:
 
 The first time fizzbuzz() is called, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, a checksum of the declaration in the project's filesystem is compared with the current declaration. If the declaration has changed, new code will be generated and executed. Otherwise, the previous implementation is immediately retrieved and re-used.
 
+<br>
+
 In production environments, Codespeak assumes all functions have unchanged, existing logic. Therefore, they are executed with near-zero overhead. 
 
+<br>
 
+<br>
 
-
+<br>
 
 ### Testing
 
@@ -86,56 +92,18 @@ Besides type hints, tests can be used to ensure accuracy of codegen.
 
 ....pass tests into decorator...codegen runs tests and re-uses the results to generate new code until the tests are satisfied
 
+<br>
 
+<br>
 
-
-
-
-
-
+<br>
 
 ### Why
 
-- It's easier to write english than code
-
+- English is easy to write
 - Explicitly pairing prompt-context to programming logic ensures that any information used to create a block of code is easily accessible and editable in the future
-- Programmers have full control over the quantity of work they are abstracting to an LLM
-
+- Programmers have full control over the quantity of work they are abstracting to a language-model
 - Automated file management
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-At run-time, the generated function body is automatically executed in-place of the em
-
-
-
- When a declaration changes, Codespeak generates new logic to satisfy it. Otherwise, 
-
-
-
-
-
-
-
-- Deterministic
-- Zero-latency & minimal overhead
-- No untrusted execution with exec()
 
 
 
