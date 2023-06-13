@@ -96,7 +96,9 @@ class CodespeakDeclaration(BaseModel):
 
     @staticmethod
     def from_callable(
-        func: Callable, self_class_obj: Any | None
+        func: Callable,
+        self_class_obj: Any | None,
+        with_file_service: DeclarationFileService | None = None,
     ) -> "CodespeakDeclaration":
         signature = inspect.signature(func)
         source_code = textwrap.dedent(inspect.getsource(func))
@@ -112,6 +114,7 @@ class CodespeakDeclaration(BaseModel):
         signature_defs = declaration_helpers.definitions_for_signature(
             signature, self_definition=self_definition
         )
+        file_service = with_file_service or DeclarationFileService.from_callable(func)
 
         return CodespeakDeclaration(
             name=func.__name__,
@@ -127,7 +130,7 @@ class CodespeakDeclaration(BaseModel):
             signature_defs=signature_defs,
             import_defs=build_import_defs(signature_defs=signature_defs),
             body_imports=BodyImports.from_func_source(source_code),
-            file_service=DeclarationFileService.from_callable(func),
+            file_service=file_service,
         )
 
 
