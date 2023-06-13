@@ -1,12 +1,15 @@
 # run.py
 import importlib
+from unittest.mock import patch
 import inspect
 import time
-from typing import Callable, List
+from typing import Any, Callable, List
 from pydantic import BaseModel
 from codespeak.helpers.set_attr_for_qualname import set_attr_for_qualname
+from codespeak.core.executor import (
+    execute_from_typed_attributes,
+)
 import pytest
-from codespeak.core.executor import execute_from_attributes
 
 
 class ResultsCollector:
@@ -51,11 +54,22 @@ class LogicExecutor:
         self.func_name = func_name
 
     def __call__(self, *args, **kwargs):
-        return execute_from_attributes(
+        _args: List[Any] = list(args) or []
+        _kwargs = kwargs or {}
+
+        # even if i hardcode a return value here, it still regenerates the damn code
+        # return 4
+        # it's only using the logic executor in the nested testing
+        # do u think
+        print("calling logic EXECUTOR")
+        # so this is only getting called once but the function is called twice
+        # so it
+
+        return execute_from_typed_attributes(
             logic_modulepath=self.logic_modulepath,
             func_name=self.func_name,
-            *args,
-            **kwargs,
+            args=_args,
+            kwargs=_kwargs,
         )
 
 
@@ -66,26 +80,45 @@ def qualname_to_name(qualname: str) -> str:
         return qualname
 
 
+def do_nothing(*args, **kwargs):
+    print("doing nothing")
+    return 5
+
+
+# could i just get rid of the swapper by setting the pass conditions?
+# the swapper sucks
 class FunctionSwapper:
     def __init__(
-        self, func_to_swap_qualname: str, declaration_module: str, logic_modulepath: str
+        self, declaration_qualname: str, declaration_module: str, logic_modulepath: str
     ):
-        self.func_to_swap_qualname = func_to_swap_qualname
+        print(
+            "swapping declaration at module: ",
+            declaration_module,
+            " qualname:",
+            declaration_qualname,
+            "with logic at modulepath:",
+            logic_modulepath,
+        )
+        self.declaration_qualname = declaration_qualname
         self.declaration_module = declaration_module
         self.logic_modulepath = logic_modulepath
 
     def pytest_sessionstart(self, session):
         # This method is called before pytest starts running tests
         # Here we can perform the patching
+        print("SESSION STARTED")
         try:
             module_obj = importlib.import_module(self.declaration_module)
             logic_executor = LogicExecutor(
                 logic_modulepath=self.logic_modulepath,
-                func_name=qualname_to_name(self.func_to_swap_qualname),
+                func_name=qualname_to_name(self.declaration_qualname),
             )
-            set_attr_for_qualname(
-                module_obj, self.func_to_swap_qualname, logic_executor
-            )
+            _dir = dir(module_obj)
+            print("dir attr:", _dir)
+            setattr(module_obj, self.declaration_qualname, do_nothing)
+
+            # set_attr_for_qualname(module_obj, self.declaration_qualname, do_nothing)
+            print("swapped codespeak func for logic")
 
         except Exception as e:
             raise Exception("couldn't swap codespeak func for logic in tests, e:", e)
@@ -114,12 +147,46 @@ class TestRunner(BaseModel):
         logic_modulepath: str,
     ):
         collector = ResultsCollector()
-        swapper = FunctionSwapper(
-            func_to_swap_qualname=codespeak_declaration_qualname,
-            declaration_module=codespeak_declaration_module,
-            logic_modulepath=logic_modulepath,
+        # swapper = FunctionSwapper(
+        #     declaration_qualname=codespeak_declaration_qualname,
+        #     declaration_module=codespeak_declaration_module,
+        #     logic_modulepath=logic_modulepath,
+        # )
+        # print(
+        #     "running test file bleh:",
+        #     test_file,
+        #     " with declaration module:",
+        #     codespeak_declaration_module,
+        # )
+        print(
+            "swapping declaration at module: ",
+            codespeak_declaration_module,
+            " qualname:",
+            codespeak_declaration_qualname,
+            "with logic at modulepath:",
+            logic_modulepath,
         )
-        pytest.main([test_file, "-k", test_func_qualname], plugins=[swapper, collector])
+        # this is still not using the code that was just generated
+        # We'll mock the function in the declaration module with our logic executor.
+        logic_executor = LogicExecutor(
+            logic_modulepath=logic_modulepath,
+            func_name=qualname_to_name(codespeak_declaration_qualname),
+        )
+        with patch(
+            f"{codespeak_declaration_module}.{codespeak_declaration_qualname}",
+            new=logic_executor,
+        ):
+            print("testing with PYTEST.MAIn")
+            # okay so this by itself is getting called twic.e
+            # that kind of nulls anythin
+            pytest.main(
+                ["-s", test_file, "-k", test_func_qualname],
+                plugins=[],  # [collector],  # swapper,
+            )
+        # pytest.main(
+        #     ["-s", test_file, "-k", test_func_qualname],
+        #     plugins=[swapper, collector],  # swapper,
+        # )
         crash_reports = []
         for report in collector.reports:
             try:

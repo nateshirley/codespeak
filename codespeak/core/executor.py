@@ -1,5 +1,5 @@
 from importlib import import_module
-from typing import Any, Callable
+from typing import Any, Callable, Dict, List
 from codespeak.generated_exception import GeneratedException
 from codespeak.declaration.declaration_file_service import DeclarationFileService
 
@@ -25,7 +25,9 @@ def execute_no_catch(logic_modulepath: str, func_name: str, *args, **kwargs):
     return logic(*args, **kwargs)
 
 
-def execute_from_attributes(logic_modulepath: str, func_name: str, *args, **kwargs):
+def execute_from_typed_attributes(
+    logic_modulepath: str, func_name: str, args: List[Any], kwargs: Dict[str, Any]
+):
     logic = load_generated_logic_from_modulepath(logic_modulepath, func_name)
     return execute_logic(logic, *args, **kwargs)
 

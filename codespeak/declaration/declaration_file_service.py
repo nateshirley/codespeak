@@ -2,7 +2,8 @@ from datetime import datetime
 import inspect
 import json
 import os
-from typing import Callable
+from types import ModuleType
+from typing import Any, Callable
 from pydantic import BaseModel
 
 from codespeak.metadata import FunctionMetadata
@@ -70,15 +71,31 @@ class DeclarationFileService(BaseModel):
     @staticmethod
     def from_callable(func: Callable) -> "DeclarationFileService":
         module = inspect.getmodule(func)
+        # print("module: ", module)
         if not module:
             raise Exception("module not found for func: ", func.__name__)
-        module_as_filepath = module.__name__.replace(".", "/")
-        dirpath = f"{DeclarationFileService.codegen_dirpath(func)}/{module_as_filepath}"
+        # module name includes nesting
+        abspath_to_proj = abspath_to_project_root(func)
+        # module is __main__ when running a script directly, we don't want to use the module name in that case
+        module_name = get_full_module_name(module, abspath_to_proj, func)
+        print("full mod name: ", module_name)
+        print("file: ", inspect.getsourcefile(func))
+        # if module.__name__.endswith("__main__"):
+        #     mod_path = get_module_path_with_filepath(
+        #         inspect.getfile(func), abspath_to_proj
+        #     )
+        #     module_name = mod_path
+        # else:
+        #     module_name = module.__name__
+        module_as_filepath = module_name.replace(".", "/")
+        dirpath_in_codespeak_generated = (
+            f"{abspath_to_proj}/{generated_directory_stem}/{module_as_filepath}"
+        )
         return DeclarationFileService(
             qualname=func.__qualname__,
-            module_name=module.__name__,
-            logic_dirpath=dirpath,
-            metadata_dirpath=f"{dirpath}/metadata",
+            module_name=module_name,
+            logic_dirpath=dirpath_in_codespeak_generated,
+            metadata_dirpath=f"{dirpath_in_codespeak_generated}/metadata",
         )
 
     def does_metadata_exist(self) -> bool:
@@ -102,23 +119,66 @@ class DeclarationFileService(BaseModel):
         module = inspect.getmodule(func)
         if not module:
             raise Exception("module not found for func: ", func.__name__)
+        module_name = get_full_module_name(module, abspath_to_project_root(func), func)
         return DeclarationFileService.build_logic_modulepath(
-            module_name=module.__name__, qualname=func.__qualname__
+            module_name=module_name, qualname=func.__qualname__
         )
 
     @staticmethod
     def qualname_to_system_name(qualname: str) -> str:
         return qualname.replace(".", "___")
 
+    # do i have a flatness issue here?
     # one module per function, this module contains the logic for the function with the redeclaration
     @staticmethod
     def build_logic_modulepath(module_name: str, qualname: str) -> str:
         return f"{generated_directory_stem}.{module_name}.{DeclarationFileService.qualname_to_system_name(qualname)}"
 
-    @staticmethod
-    def codegen_dirpath(func: Callable) -> str:
-        # e.g., Users/username/project_root/codespeak_generated
-        return abspath_to_project_root(func) + "/" + generated_directory_stem
+    # @staticmethod
+    # def codegen_dirpath(func: Callable) -> str:
+    #     # e.g., Users/username/project_root/codespeak_generated
+    #     return abspath_to_project_root(func) + "/" + generated_directory_stem
+
+
+def get_full_module_name(
+    module_obj: ModuleType, abspath_to_proj_root: str, func: Callable
+) -> str:
+    mod_path = get_module_path_with_filepath(
+        inspect.getfile(func), abspath_to_proj_root
+    )
+    return mod_path
+    # if module_obj.__name__.endswith("__main__"):
+    #     mod_path = get_module_path_with_filepath(
+    #         inspect.getfile(func), abspath_to_proj_root
+    #     )
+    #     return mod_path
+    # else:
+    #     return module_obj.__name__
+
+
+def get_module_path_with_filepath(filepath: str, project_root: str):
+    # Make sure both paths are absolute and normalized
+    filepath = os.path.normpath(os.path.abspath(filepath))
+    project_root = os.path.normpath(os.path.abspath(project_root))
+
+    # Check if the filepath is in the project_root
+    if not filepath.startswith(project_root):
+        raise ValueError("The filepath must be inside the project root")
+
+    # Get the relative path from project_root to filepath
+    rel_path = os.path.relpath(filepath, project_root)
+
+    # Remove the '.py' extension
+    module_path = os.path.splitext(rel_path)[0]
+
+    # Replace path separators with dots
+    module_path = module_path.replace(os.sep, ".")
+
+    # If the function is in '__init__', use the parent directory as the module
+    if module_path.endswith(".__init__"):
+        module_path = module_path[: -len(".__init__")]
+
+    return module_path
 
 
 def abspath_to_project_root(func: Callable):
@@ -140,3 +200,13 @@ def abspath_to_project_root(func: Callable):
             "Unable to find root directory of project where codespeak is installed. make sure you have a pyproject.toml file in your project root."
         )
     return installed_root
+
+
+"""
+okay so some of the issues to summarize:
+
+- unable to locate module when running a script directly
+- function swapper causes the module to be reloaded, which causes the function to be reloaded, which causes the function to be swapped again, which causes the module to be reloaded again, etc.
+- function swapper loading module at new path
+- function getting reloaded inside the function swapper
+"""

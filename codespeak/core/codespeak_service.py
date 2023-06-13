@@ -53,7 +53,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_code_versions < self.iterations.max_code_versions:
             print(
                 "regenerating for func: ",
-                self.declaration.qualname,
+                self.declaration.file_service.qualname,
                 " num attempt: ",
                 self.iterations.num_code_versions + 1,
             )
@@ -64,7 +64,7 @@ class CodespeakService(BaseModel):
             )
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.declaration.file_service.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def try_regenerate_from_test_failure(
@@ -73,7 +73,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_test_versions < self.iterations.max_test_versions:
             print(
                 "regenerating after failed tests for func: ",
-                self.declaration.qualname,
+                self.declaration.file_service.qualname,
                 " num attempt: ",
                 self.iterations.num_test_versions + 1,
             )
@@ -85,7 +85,7 @@ class CodespeakService(BaseModel):
             return self._fetch_new_source_code(prompt=prompt)
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.declaration.file_service.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def _guarantee_source_formatting(self, response: str) -> str:

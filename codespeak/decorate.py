@@ -15,6 +15,7 @@ def codespeak(pytest_func: Callable | None = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            print("TRIGGERED DECORATOR, args: ", list(args))
             if get_environment() == Environment.DEV:
                 self_type = self_type_if_exists(func, list(args), kwargs)
                 declaration = CodespeakDeclaration.from_callable(func, self_type)
@@ -41,3 +42,14 @@ def codespeak(pytest_func: Callable | None = None):
         return wrapper
 
     return decorator
+
+
+# def codespeak(bool: bool):
+#     def decorator(func):
+#         @wraps(func)
+#         def wrapper(*args, **kwargs):
+#             return bool
+
+#         return wrapper
+
+#     return decorator
