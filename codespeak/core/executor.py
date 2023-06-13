@@ -25,11 +25,6 @@ def execute_no_catch(logic_modulepath: str, func_name: str, *args, **kwargs):
     return logic(*args, **kwargs)
 
 
-def execute_from_attributes(logic_modulepath: str, func_name: str, *args, **kwargs):
-    logic = load_generated_logic_from_modulepath(logic_modulepath, func_name)
-    return execute_logic(logic, *args, **kwargs)
-
-
 def execute_from_callable(callable: Callable, *args, **kwargs):
     logic = load_generated_logic_from_callable(callable)
     return execute_logic(logic, *args, **kwargs)

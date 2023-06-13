@@ -6,7 +6,6 @@ from typing import Callable, List
 from pydantic import BaseModel
 from codespeak.helpers.set_attr_for_qualname import set_attr_for_qualname
 import pytest
-from codespeak.core.executor import execute_from_attributes
 
 
 class ResultsCollector:
@@ -45,50 +44,11 @@ class CrashReport(BaseModel):
     message: str
 
 
-class LogicExecutor:
-    def __init__(self, logic_modulepath: str, func_name: str):
-        self.logic_modulepath = logic_modulepath
-        self.func_name = func_name
-
-    def __call__(self, *args, **kwargs):
-        return execute_from_attributes(
-            logic_modulepath=self.logic_modulepath,
-            func_name=self.func_name,
-            *args,
-            **kwargs,
-        )
-
-
 def qualname_to_name(qualname: str) -> str:
     if "." in qualname:
         return qualname.rsplit(".", 1)[-1]
     else:
         return qualname
-
-
-class FunctionSwapper:
-    def __init__(
-        self, func_to_swap_qualname: str, declaration_module: str, logic_modulepath: str
-    ):
-        self.func_to_swap_qualname = func_to_swap_qualname
-        self.declaration_module = declaration_module
-        self.logic_modulepath = logic_modulepath
-
-    def pytest_sessionstart(self, session):
-        # This method is called before pytest starts running tests
-        # Here we can perform the patching
-        try:
-            module_obj = importlib.import_module(self.declaration_module)
-            logic_executor = LogicExecutor(
-                logic_modulepath=self.logic_modulepath,
-                func_name=qualname_to_name(self.func_to_swap_qualname),
-            )
-            set_attr_for_qualname(
-                module_obj, self.func_to_swap_qualname, logic_executor
-            )
-
-        except Exception as e:
-            raise Exception("couldn't swap codespeak func for logic in tests, e:", e)
 
 
 class TestRunner(BaseModel):
@@ -109,17 +69,9 @@ class TestRunner(BaseModel):
     def run_test_func(
         test_file: str,
         test_func_qualname: str,
-        codespeak_declaration_module: str,
-        codespeak_declaration_qualname: str,
-        logic_modulepath: str,
     ):
         collector = ResultsCollector()
-        swapper = FunctionSwapper(
-            func_to_swap_qualname=codespeak_declaration_qualname,
-            declaration_module=codespeak_declaration_module,
-            logic_modulepath=logic_modulepath,
-        )
-        pytest.main([test_file, "-k", test_func_qualname], plugins=[swapper, collector])
+        pytest.main([test_file, "-k", test_func_qualname], plugins=[collector])
         crash_reports = []
         for report in collector.reports:
             try:

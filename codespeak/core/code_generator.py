@@ -75,16 +75,10 @@ class CodeGenerator(BaseModel):
             execution_result = execution_response.result
             if execution_response.did_regenerate_source:
                 return self._validate_new_source_code()
-            else:
-                self._write_execution_status(
-                    did_execute=True,
-                )
         if self.test_func:
             test_response = self._try_align_with_tests()
             if test_response.did_regenerate_source:
                 return self._validate_new_source_code()
-            else:
-                self._write_test_status(has_tests=True, did_pass_tests=True)
         return GenerationResponse(execution_result=execution_result)
 
     def _try_align_with_execution(self) -> ExecutionResponse:
@@ -95,6 +89,7 @@ class CodeGenerator(BaseModel):
                 *self.args,
                 **self.kwargs,
             )
+            self._write_execution_status(did_execute=True)
             return ExecutionResponse(result=result, did_regenerate_source=False)
         except Exception as e:
             if isinstance(e, GeneratedException):
@@ -112,13 +107,13 @@ class CodeGenerator(BaseModel):
     def _try_align_with_tests(self) -> TestResponse:
         if not self.test_func:
             raise Exception("trying to test without a test func")
+        self._write_test_status(has_tests=False, did_pass_tests=False)
         test_result = TestRunner.run_test_func(
             test_file=self.test_func.file,
             test_func_qualname=self.test_func.qualname,
-            codespeak_declaration_module=self.declaration.module_name,
-            codespeak_declaration_qualname=self.declaration.qualname,
-            logic_modulepath=self.declaration.file_service.logic_modulepath,
         )
+        did_pass_tests = test_result.exitcode == pytest.ExitCode.OK
+        self._write_test_status(has_tests=False, did_pass_tests=did_pass_tests)
         if test_result.exitcode == pytest.ExitCode.OK:
             print(f"All tests passed successfully in {test_result.total_duration}s")
             return TestResponse(did_regenerate_source=False)
