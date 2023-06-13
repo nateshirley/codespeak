@@ -6,7 +6,7 @@ from pydantic import BaseModel
 import pytest
 from codespeak.core.codespeak_service import CodespeakService
 from codespeak.generated_exception import GeneratedException
-from codespeak.core.executor import execute_no_catch
+from codespeak.core.executor import execute_unsafe
 from codespeak.core.results_collector import TestRunner
 from codespeak.declaration.codespeak_declaration import CodespeakDeclaration
 
@@ -83,9 +83,9 @@ class CodeGenerator(BaseModel):
 
     def _try_align_with_execution(self) -> ExecutionResponse:
         try:
-            result = execute_no_catch(
-                self.declaration.file_service.logic_modulepath,
-                self.declaration.name,
+            result = execute_unsafe(
+                self.declaration.file_service.generated_module_qualname,
+                self.declaration.file_service.generated_entrypoint,
                 *self.args,
                 **self.kwargs,
             )

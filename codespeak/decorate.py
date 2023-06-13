@@ -6,6 +6,9 @@ from codespeak.declaration.codespeak_declaration import CodespeakDeclaration
 from functools import wraps
 from codespeak.core import diff, executor
 from codespeak.core.code_generator import CodeGenerator
+from codespeak.declaration.declaration_file_service import (
+    DeclarationFileService,
+)
 from codespeak.helpers.self_type import self_type_if_exists
 from codespeak.core.code_generator import TestFunc
 from codespeak.config import get_environment, Environment
@@ -15,11 +18,15 @@ def codespeak(pytest_func: Callable | None = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
+            if not hasattr(wrapper, "file_service"):
+                raise Exception("file service not found")
             if get_environment() == Environment.DEV:
                 self_type = self_type_if_exists(func, list(args), kwargs)
-                declaration = CodespeakDeclaration.from_callable(func, self_type)
+                declaration = CodespeakDeclaration.from_callable(
+                    func, self_type, wrapper.file_service
+                )
                 should_generate_new_source_code = diff.require_new_codegen(
-                    declaration.file_service, declaration.digest
+                    wrapper.file_service, declaration.digest
                 )
                 test_func = TestFunc.from_callable(pytest_func) if pytest_func else None
                 if should_generate_new_source_code:
@@ -33,11 +40,18 @@ def codespeak(pytest_func: Callable | None = None):
                     )
                     generation = code_generator.generate()
                     return generation.execution_result
-                else:
-                    return executor.execute_from_callable(func, *args, **kwargs)
-            else:
-                return executor.execute_from_callable(func, *args, **kwargs)
+            return executor.execute_with_attributes(
+                wrapper.file_service.generated_module_qualname,
+                func.__name__,
+                *args,
+                **kwargs
+            )
 
+        setattr(
+            wrapper,
+            "file_service",
+            DeclarationFileService.from_callable(func),
+        )
         return wrapper
 
     return decorator

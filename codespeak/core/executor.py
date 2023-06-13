@@ -1,15 +1,11 @@
 from importlib import import_module
 from typing import Any, Callable
 from codespeak.generated_exception import GeneratedException
-from codespeak.declaration.declaration_file_service import DeclarationFileService
 
 
-def load_generated_logic_from_callable(callable: Callable) -> Callable:
-    modulepath = DeclarationFileService.logic_modulepath_from_callable(callable)
-    return load_generated_logic_from_modulepath(modulepath, func_name=callable.__name__)
-
-
-def load_generated_logic_from_modulepath(modulepath: str, func_name: str) -> Callable:
+def load_generated_logic_from_module_qualname(
+    modulepath: str, func_name: str
+) -> Callable:
     try:
         module = import_module(modulepath)
     except Exception as e:
@@ -20,17 +16,23 @@ def load_generated_logic_from_modulepath(modulepath: str, func_name: str) -> Cal
         raise Exception(f"Could not find function {func_name} on module {modulepath}")
 
 
-def execute_no_catch(logic_modulepath: str, func_name: str, *args, **kwargs):
-    logic = load_generated_logic_from_modulepath(logic_modulepath, func_name=func_name)
+def execute_unsafe(codegen_module_qualname: str, func_name: str, *args, **kwargs):
+    logic = load_generated_logic_from_module_qualname(
+        codegen_module_qualname, func_name=func_name
+    )
     return logic(*args, **kwargs)
 
 
-def execute_from_callable(callable: Callable, *args, **kwargs):
-    logic = load_generated_logic_from_callable(callable)
-    return execute_logic(logic, *args, **kwargs)
+def execute_with_attributes(
+    codegen_module_qualname: str, func_name: str, *args, **kwargs
+):
+    logic = load_generated_logic_from_module_qualname(
+        codegen_module_qualname, func_name=func_name
+    )
+    return execute_safe(logic, *args, **kwargs)
 
 
-def execute_logic(logic: Callable, *args, **kwargs) -> Any:
+def execute_safe(logic: Callable, *args, **kwargs) -> Any:
     try:
         result = logic(*args, **kwargs)
         return result
