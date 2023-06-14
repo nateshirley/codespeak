@@ -4,7 +4,7 @@
 
 # <img src="https://raw.githubusercontent.com/nateshirley/codespeak-assets/main/speaker.png" style="zoom:17%;" /> Codespeak
 
-Codespeak lets you write python in natural language while maintaining complete interop with your existing stack and preserving real-time, deterministic execution.
+Write python in natural language. Maintain complete interop with your existing stack and preserve real-time, deterministic execution.
 
 
 
@@ -54,7 +54,7 @@ If using this function, simply declare it as shown above, and then call it.
 
 ### Maintain real-time, deterministic execution
 
-When Codespeak detects a new and/or different function, it writes new code for it. Otherwise, functions are executed deterministically and in real-time.
+The first time a Codespeak function is executed, the appropriate implementation is generated. From then on, the function is executed deterministically and in real-time.
 
 Here's fizzbuzz in Codespeak:
 
@@ -70,7 +70,7 @@ def fizzbuzz(limit: int) -> None:
   """
 ```
 
-The first time fizzbuzz() is called in your project, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, the current version is compared with the previous using a checksum. 
+The first time fizzbuzz() is called, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, the current version is compared with the previous using a checksum. 
 
 When changes are detected, new code is generated and executed. Otherwise, the previous implementation is executed in real-time.
 
@@ -95,24 +95,35 @@ def add_two(x: int, y: int) -> int:
   """add two numbers together"""
 ```
 
-Currently, Codespeak tests are run exclusively as pytest functions.
+Currently, Codespeak receives tests exclusively in the form of pytest functions.
 
 ### Access and manipulate generated logic in your file system
 
-When Codespeak implements your functions, they are written to the file system in a `codespeak_generated/` directory under the same hiearchy as they are defined.
+When Codespeak implements your functions, they're written to the file system in a `codespeak_generated/` directory under the same hiearchy as they are defined.
 
 Each function is implemented in its own file, named after the function. To view or edit logic for a function, simply visit the file at [function_name].
 
-
-
 ## Why would I use this?
 
-- English is easy to write
-- Explicitly pairing prompt-context to programming logic ensures that any information used to create a block of code is easily accessible and editable in the future
-- Programmers have full control over the quantity of work they are abstracting to a language-model
-- Automated file management
+#### The right syntax is whatever makes sense to you.
 
+Stop crawling your memory for syntax and data structures. Whatever makes sense to you, just works, so you can stay focused on your program's goals.
 
+#### Choose the best-fit abstraction for your work.
+
+Maintain the flexibility to delegate as much—or as little—programming as you'd like to an LLM, and adjust your choice on a case-by-case basis. Let a model control an entire endpoint, or a single SQL query.
+
+#### Always know what you wrote and what you didn't.
+
+Stop digging through blocks of code that Copilot wrote last month and sending them to ChatGPT. Let your code clarify your responsibilities.
+
+#### Modify AI-generated code with simple comment revisions.
+
+With Codespeak, everything that's required to generate new code for your existing programs is declared in your codebase. This means your codegen can be immediately re-produced or updated on any machine, simply by adjusting your code comments.
+
+#### Accomplish more with your programs in fewer declared-lines.
+
+Compress your exposure to program logic. Fewer lines means fewer files and fewer functions to manage, so you can stop wasting your time re-organzing and re-naming. Stay focused on your program's goals.
 
 ## Getting started
 
