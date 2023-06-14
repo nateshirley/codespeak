@@ -4,7 +4,7 @@
 
 # <img src="https://raw.githubusercontent.com/nateshirley/codespeak-assets/main/speaker.png" style="zoom:17%;" /> Codespeak
 
-Codespeak lets you write python in natural language while maintaining complete interop with your existing stack and preserving real-time, deterministic execution.
+Write python in natural language. Maintain complete interop with your existing stack and preserve real-time, deterministic execution.
 
 
 
