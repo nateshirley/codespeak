@@ -11,16 +11,18 @@ from codespeak.declaration.declaration_file_service import (
 )
 from codespeak.helpers.self_type import self_type_if_exists
 from codespeak.core.code_generator import TestFunc
-from codespeak.config import get_environment, Environment
+from codespeak import config
 
 
 def codespeak(pytest_func: Callable | None = None):
     def decorator(func):
         @wraps(func)
         def wrapper(*args, **kwargs):
-            if not hasattr(wrapper, "file_service"):
-                raise Exception("file service not found")
-            if get_environment() == Environment.DEV:
+            if wrapper.env == "prod":
+                return wrapper.logic(*args, **kwargs)
+            else:
+                if not hasattr(wrapper, "file_service"):
+                    raise Exception("file service not found")
                 self_type = self_type_if_exists(func, list(args), kwargs)
                 declaration = CodespeakDeclaration.from_callable(
                     func, self_type, wrapper.file_service
@@ -40,18 +42,32 @@ def codespeak(pytest_func: Callable | None = None):
                     )
                     generation = code_generator.generate()
                     return generation.execution_result
-            return executor.execute_with_attributes(
-                wrapper.file_service.generated_module_qualname,
-                func.__name__,
-                *args,
-                **kwargs
-            )
+                else:
+                    return executor.execute_with_attributes(
+                        wrapper.file_service.generated_module_qualname,
+                        wrapper.file_service.generated_entrypoint,
+                        *args,
+                        **kwargs,
+                    )
 
-        setattr(
-            wrapper,
-            "file_service",
-            DeclarationFileService.from_callable(func),
-        )
+        set_decorator_attributes(wrapper, func)
         return wrapper
 
     return decorator
+
+
+def set_decorator_attributes(wrapper: Callable, decorated_func: Callable):
+    env = config.get_environment()
+    setattr(wrapper, "env", env.value)
+    if env == config.Environment.PROD:
+        logic = executor.load_generated_logic_from_module_qualname(
+            DeclarationFileService.gather_generated_module_qualname(
+                decorated_func=decorated_func
+            ),
+            decorated_func.__name__,
+        )
+        setattr(wrapper, "logic", logic)
+        return
+    elif env == config.Environment.DEV:
+        file_service = DeclarationFileService.from_callable(decorated_func)
+        setattr(wrapper, "file_service", file_service)

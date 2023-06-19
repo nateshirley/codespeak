@@ -6,6 +6,7 @@ from types import ModuleType
 from typing import Any, Callable
 from pydantic import BaseModel
 
+from codespeak import config
 from codespeak.metadata import FunctionMetadata
 from codespeak.metadata.digest import DeclarationDigest
 
@@ -63,11 +64,22 @@ class DeclarationFileService(BaseModel):
         return f"{self.codegen_metadata_dirpath}/metadata___{self.declaration_filesystem_name}.json"
 
     @staticmethod
+    def gather_generated_module_qualname(decorated_func: Callable) -> str:
+        module = inspect.getmodule(decorated_func)
+        if not module:
+            raise Exception("module not found for func: ", decorated_func.__name__)
+        declared_module_qualname = get_declared_module_qualname(decorated_func)
+        return build_generated_module_qualname(
+            declared_module_qualname=declared_module_qualname,
+            func_qualname=decorated_func.__qualname__,
+        )
+
+    @staticmethod
     def from_callable(func: Callable) -> "DeclarationFileService":
         module = inspect.getmodule(func)
         if not module:
             raise Exception("module not found for func: ", func.__name__)
-        abspath_to_proj = abspath_to_project_root(func)
+        abspath_to_proj = config.get_abspath_to_project_root(func)
         declared_module_qualname = get_declared_module_qualname(func)
         declared_module_as_filepath = declared_module_qualname.replace(".", "/")
         return DeclarationFileService(
@@ -99,6 +111,8 @@ class DeclarationFileService(BaseModel):
             return file.read()
 
 
+# this func assumes generated directory is in project root
+# could also add flexibity here to configure this in a toml, later
 def build_generated_module_qualname(declared_module_qualname: str, func_qualname: str):
     return f"{generated_directory_stem}.{declared_module_qualname}.{func_qualname_to_filesystem_name(func_qualname)}"
 
@@ -112,12 +126,13 @@ def derive_generated_module_qualname_from_func(func: Callable) -> str:
     return build_generated_module_qualname(declared_mod_qualname, func.__qualname__)
 
 
+# want to leave this as an attribute on the wrapper, just want to get rid of abspath to root
 def get_declared_module_qualname(func: Callable):
     source_file = inspect.getsourcefile(func)
     if not source_file:
         raise Exception("unable to get source file for func: ", func.__name__)
     return derive_declared_module_qualname_from_filepaths(
-        source_file, abspath_to_project_root(func)
+        source_file, config.get_abspath_to_project_root(func)
     )
 
 
@@ -146,24 +161,3 @@ def derive_declared_module_qualname_from_filepaths(
         module_qualname = module_qualname[: -len(".__init__")]
 
     return module_qualname
-
-
-def abspath_to_project_root(func: Callable):
-    import os
-
-    func_path = inspect.getabsfile(func)
-    current_directory = func_path
-    installed_root = None
-
-    while current_directory != "/":
-        if os.path.exists(os.path.join(current_directory, "pyproject.toml")):
-            installed_root = current_directory
-            break
-
-        current_directory = os.path.dirname(current_directory)
-
-    if installed_root is None:
-        raise Exception(
-            "Unable to find root directory of project where codespeak is installed. make sure you have a pyproject.toml file in your project root."
-        )
-    return installed_root

@@ -1,6 +1,10 @@
 from enum import Enum
 import os
+from typing import Callable
 from pydantic import BaseModel
+from codespeak.helpers.auto_detect_abspath_to_project_root import (
+    auto_detect_abspath_to_project_root,
+)
 
 
 class Environment(Enum):
@@ -8,10 +12,22 @@ class Environment(Enum):
     DEV = "dev"
 
 
-class Config(BaseModel):
+class _Config(BaseModel):
+    """
+    Configurable settings for codespeak.
+
+    - environment: 'prod' or 'dev'
+    - openai_api_key: your openai api key, NOT required in prod
+    - verbose: whether to print out debug statements
+    - abspath_to_project_root: This will be automatically determined the first time a codespeak function is called if it's not set, and it's used to load generated code.
+
+    """
+
     openai_api_key: str | None = None
     environment: Environment
     verbose: bool = False
+    # automatically determined if not set
+    abspath_to_project_root: str | None = None
 
     @staticmethod
     def from_env():
@@ -19,16 +35,28 @@ class Config(BaseModel):
         if env:
             env = env.lower()
             if env in [e.value for e in Environment]:
-                return Config(
+                return _Config(
                     openai_api_key=os.getenv("OPENAI_API_KEY"),
                     environment=Environment(env),
                 )
-        return Config(
+        return _Config(
             openai_api_key=os.getenv("OPENAI_API_KEY"), environment=Environment.DEV
         )
 
 
-_config = Config.from_env()
+_config = _Config.from_env()
+
+
+def manually_set_abspath_to_project_root(abspath: str):
+    _config.abspath_to_project_root = abspath
+
+
+def get_abspath_to_project_root(decorated_func: Callable) -> str:
+    if _config.abspath_to_project_root is None:
+        _config.abspath_to_project_root = auto_detect_abspath_to_project_root(
+            decorated_func
+        )
+    return _config.abspath_to_project_root
 
 
 def set_openai_api_key(key: str):
