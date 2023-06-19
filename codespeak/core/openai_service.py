@@ -1,9 +1,9 @@
 import time
 import openai
-from typing import Any, Callable, Dict, List, Literal
+from typing import Any, List
 
 from pydantic import BaseModel, validator
-from codespeak.config import get_openai_api_key
+from codespeak import config
 
 
 class Roles:
@@ -40,7 +40,7 @@ class OpenAIService(BaseModel):
     @staticmethod
     def with_defaults():
         return OpenAIService(
-            model="gpt-4",
+            model=config.get_openai_model(),
             messages=[
                 Message(
                     role=Roles.system(),
@@ -63,12 +63,12 @@ class OpenAIService(BaseModel):
         self.messages.append(Message(role=role, content=content))
 
     def get_completion(self) -> str:
-        openai_key = get_openai_api_key()
+        openai_key = config.get_openai_api_key()
         if openai_key is None or openai_key == "":
             raise Exception(
                 "OpenAI API key not configured, use codespeak.set_openai_key() to set it, or load an env variable OPENAI_API_KEY",
             )
-        openai.api_key = get_openai_api_key()
+        openai.api_key = config.get_openai_api_key()
         try:
             response: Any = openai.ChatCompletion.create(
                 model=self.model,

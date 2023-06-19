@@ -28,6 +28,7 @@ class _Config(BaseModel):
     verbose: bool = False
     # automatically determined if not set
     abspath_to_project_root: str | None = None
+    openai_model: str = "gpt-4"
 
     @staticmethod
     def from_env():
@@ -45,6 +46,14 @@ class _Config(BaseModel):
 
 
 _config = _Config.from_env()
+
+
+def set_openai_model(model: str):
+    _config.openai_model = model
+
+
+def get_openai_model() -> str:
+    return _config.openai_model
 
 
 def manually_set_abspath_to_project_root(abspath: str):
