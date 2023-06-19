@@ -10,7 +10,8 @@ from codespeak import config
 from codespeak.metadata import FunctionMetadata
 from codespeak.metadata.digest import DeclarationDigest
 
-generated_directory_stem = "codespeak_generated"
+codegen_dirname = "codespeak_generated"
+metadata_file_prefix = "_metadata_"
 
 
 class DeclarationFileService(BaseModel):
@@ -61,7 +62,7 @@ class DeclarationFileService(BaseModel):
 
     @property
     def codegen_metadata_filepath(self) -> str:
-        return f"{self.codegen_metadata_dirpath}/metadata___{self.declaration_filesystem_name}.json"
+        return f"{self.codegen_metadata_dirpath}/{metadata_file_prefix}{self.declaration_filesystem_name}.json"
 
     @staticmethod
     def gather_generated_module_qualname(decorated_func: Callable) -> str:
@@ -91,7 +92,7 @@ class DeclarationFileService(BaseModel):
                 declared_module_qualname=declared_module_qualname,
                 func_qualname=func.__qualname__,
             ),
-            codegen_absolute_dirpath=f"{abspath_to_proj}/{generated_directory_stem}/{declared_module_as_filepath}",
+            codegen_absolute_dirpath=f"{abspath_to_proj}/{codegen_dirname}/{declared_module_as_filepath}",
         )
 
     def does_metadata_exist(self) -> bool:
@@ -114,7 +115,7 @@ class DeclarationFileService(BaseModel):
 # this func assumes generated directory is in project root
 # could also add flexibity here to configure this in a toml, later
 def build_generated_module_qualname(declared_module_qualname: str, func_qualname: str):
-    return f"{generated_directory_stem}.{declared_module_qualname}.{func_qualname_to_filesystem_name(func_qualname)}"
+    return f"{codegen_dirname}.{declared_module_qualname}.{func_qualname_to_filesystem_name(func_qualname)}"
 
 
 def func_qualname_to_filesystem_name(qualname: str) -> str:

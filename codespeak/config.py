@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from codespeak.helpers.auto_detect_abspath_to_project_root import (
     auto_detect_abspath_to_project_root,
 )
+from codespeak.declaration.declaration_file_service import codegen_dirname
 
 
 class Environment(Enum):
@@ -26,9 +27,9 @@ class _Config(BaseModel):
     openai_api_key: str | None = None
     environment: Environment
     verbose: bool = False
-    # automatically determined if not set
     abspath_to_project_root: str | None = None
     openai_model: str = "gpt-4"
+    auto_clean: bool = True
 
     @staticmethod
     def from_env():
@@ -46,6 +47,18 @@ class _Config(BaseModel):
 
 
 _config = _Config.from_env()
+
+
+def abspath_to_codegen_dir() -> str:
+    return f"{_config.abspath_to_project_root}/{codegen_dirname}"
+
+
+def set_auto_clean(auto_clean: bool):
+    _config.auto_clean = auto_clean
+
+
+def should_auto_clean() -> bool:
+    return _config.auto_clean
 
 
 def set_openai_model(model: str):

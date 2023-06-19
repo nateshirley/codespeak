@@ -10,6 +10,7 @@ from codespeak.declaration.declaration_file_service import (
 from codespeak.helpers.self_type import self_type_if_exists
 from codespeak.core.code_generator import TestFunc
 from codespeak import config
+from codespeak.clean import clean
 
 
 def codespeak(pytest_func: Callable | None = None):
@@ -39,6 +40,8 @@ def codespeak(pytest_func: Callable | None = None):
                         kwargs=kwargs,
                     )
                     generation = code_generator.generate()
+                    if config.should_auto_clean():
+                        clean(config.abspath_to_codegen_dir())
                     return generation.execution_result
                 else:
                     return executor.execute_with_attributes(

@@ -4,7 +4,6 @@ from typing import Callable
 
 
 def auto_detect_abspath_to_project_root(decorated_func: Callable):
-    print("GETTING ABSPATH TO PROJECT ROOT")
     import os
 
     setup_files = [
