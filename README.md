@@ -68,7 +68,7 @@ The first time fizzbuzz() is called, Codespeak will generate its implementation 
 
 When changes are detected, new code is generated and executed. Otherwise, the previous implementation is executed in real-time.
 
-In production environments, Codespeak assumes all functions are unchanged and executes them with near-zero overhead.
+In production environments, Codespeak assumes all functions are unchanged and executes them with near-zero overhead—on an M2 Mac, you would need to call a Codespeak function about 13 million times to generate 1 second of latency.
 
 To configure production settings, use an environment variable `ENVIRONMENT=PROD` or call `codespeak.set_environment("prod")`
 
