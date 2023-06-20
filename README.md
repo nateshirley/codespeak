@@ -1,12 +1,6 @@
-
-
-
-
 # <img src="https://raw.githubusercontent.com/nateshirley/codespeak-assets/main/speaker.png" style="zoom:17%;" /> Codespeak
 
 Write python in natural language. Maintain complete interop with your existing stack and preserve real-time, deterministic execution.
-
-
 
 ## Installation
 
@@ -16,18 +10,18 @@ See [getting started](#getting-started) for API key config.
 
 ## Usage
 
-Declare a function with the `@codespeak()` decorator and describe its goal with a docstring. Then, call the function:
+Declare a function with the `@codespeak` decorator and describe its goal with a docstring. Then, call the function:
 
 ```python
 from codespeak import codespeak
 
-@codespeak()
+@codespeak
 def add_two(x: int, y: int) -> int:
   """add two numbers together"""
-  
- 
-result = add_two(1, 3) 
-print(result) # output: 4  
+
+
+result = add_two(1, 3)
+print(result) # output: 4
 ```
 
 Codespeak uses function declarations to understand program intent and write corresponding implementations. When Codespeak functions are called, their generated implementations are executed.
@@ -41,12 +35,12 @@ from sqlalchemy.orm.session import Session
 from datetime import datetime
 from my_models import User, Order
 
-@codespeak()
+@codespeak
 def orders_for_user_since_date(session: Session, user: User, since_date: datetime) -> List[Order]:
   """return all of the orders for the user placed after the given date"""
 ```
 
-When compared to the first example, this function requires more advanced logic, but its type hints contain much richer information about the data that the function will operate on. 
+When compared to the first example, this function requires more advanced logic, but its type hints contain much richer information about the data that the function will operate on.
 
 To generate code for the above function, Codespeak will navigate through the function's types and use them to understand how to accomplish its goal. Here, the types should contain plenty of information to implement the function.
 
@@ -59,7 +53,7 @@ The first time a Codespeak function is executed, the appropriate implementation 
 Here's fizzbuzz in Codespeak:
 
 ```python
-@codespeak()
+@codespeak
 def fizzbuzz(limit: int) -> None:
   """
   Iterate from 1 to the limit.
@@ -70,7 +64,7 @@ def fizzbuzz(limit: int) -> None:
   """
 ```
 
-The first time fizzbuzz() is called, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, the current version is compared with the previous using a checksum. 
+The first time fizzbuzz() is called, Codespeak will generate its implementation and execute it. When the function is called anytime thereafter, the current version is compared with the previous using a checksum.
 
 When changes are detected, new code is generated and executed. Otherwise, the previous implementation is executed in real-time.
 
@@ -84,15 +78,18 @@ Alongside type hints, tests allow Codespeak to guarantee specific properties in 
 
 When writing code for a function with tests, Codespeak will rewrite and execute its code until the tests pass.
 
-To apply a test to a function, simply pass it into the `@codespeak()` decorator as an argument:
+To attach a test to a function, simply assign it with the function's built-in "assign_pytest_function" method:
 
 ```python
-def test_add_two():
-  assert add_two(1, 3) == 4
- 
-@codespeak(test_add_two)
+@codespeak
 def add_two(x: int, y: int) -> int:
   """add two numbers together"""
+
+def test_add_two():
+  assert add_two(1, 3) == 4
+
+add_two.assign_pytest_function(test_add_two)
+
 ```
 
 Currently, Codespeak receives tests exclusively in the form of pytest functions.
@@ -127,7 +124,7 @@ Compress your exposure to program logic. Fewer lines means fewer files and fewer
 
 ## Getting started
 
-Codespeak needs to be configured with an OpenAI API key (access your keys [here](https://platform.openai.com/account/api-keys)). 
+Codespeak needs to be configured with an OpenAI API key (access your keys [here](https://platform.openai.com/account/api-keys)).
 
 The library will automatically use an environment variable `OPENAI_API_KEY` if one exists:
 
@@ -142,6 +139,3 @@ import codespeak
 
 codespeak.set_openai_api_key("sk-...")
 ```
-
-
-

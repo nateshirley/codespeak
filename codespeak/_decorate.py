@@ -61,7 +61,7 @@ def codespeak(func):
             else:
                 return dev_execute(*args, **kwargs)
 
-        def assign_pytest_func(self, _pytest_func: Callable):
+        def assign_pytest_function(self, _pytest_func: Callable):
             self.pytest_func = TestFunc.from_callable(_pytest_func)
 
     codespeak_function = _CodespeakFunction()
