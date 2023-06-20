@@ -3,7 +3,7 @@ from pydantic import BaseModel
 from codespeak.core import prompt
 from codespeak.core.openai_service import OpenAIService, Roles
 from codespeak.core.results_collector import CrashReport
-from codespeak.config import get_verbose
+from codespeak.config._config import get_verbose
 from codespeak.declaration.codespeak_declaration import CodespeakDeclaration
 
 

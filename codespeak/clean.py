@@ -1,5 +1,4 @@
 """cleans out codespeak_generated directory and removes unused functions"""
-
 import os
 import fnmatch
 import shutil
@@ -103,7 +102,7 @@ def has_attr_from_qualname(obj: Any, qualname: str) -> bool:
 def check_function_exists(modulepath: str, func_qualname: str):
     try:
         module = import_module(modulepath)
-    except ImportError:
+    except Exception as e:
         return False
     return has_attr_from_qualname(module, func_qualname)
 

@@ -6,7 +6,7 @@ from types import ModuleType
 from typing import Any, Callable
 from pydantic import BaseModel
 
-from codespeak import config
+from codespeak.config import _config
 from codespeak.metadata import FunctionMetadata
 from codespeak.metadata.digest import DeclarationDigest
 
@@ -80,7 +80,7 @@ class DeclarationFileService(BaseModel):
         module = inspect.getmodule(func)
         if not module:
             raise Exception("module not found for func: ", func.__name__)
-        abspath_to_proj = config.get_abspath_to_project_root(func)
+        abspath_to_proj = _config.get_abspath_to_project_root(func)
         declared_module_qualname = get_declared_module_qualname(func)
         declared_module_as_filepath = declared_module_qualname.replace(".", "/")
         return DeclarationFileService(
@@ -133,7 +133,7 @@ def get_declared_module_qualname(func: Callable):
     if not source_file:
         raise Exception("unable to get source file for func: ", func.__name__)
     return derive_declared_module_qualname_from_filepaths(
-        source_file, config.get_abspath_to_project_root(func)
+        source_file, _config.get_abspath_to_project_root(func)
     )
 
 

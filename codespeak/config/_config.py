@@ -6,21 +6,15 @@ from codespeak.helpers.auto_detect_abspath_to_project_root import (
     auto_detect_abspath_to_project_root,
 )
 from codespeak.declaration.declaration_file_service import codegen_dirname
-
-
-class Environment(Enum):
-    PROD = "prod"
-    DEV = "dev"
+from codespeak.config.environment import Environment
 
 
 class _Config(BaseModel):
     """
-    Configurable settings for codespeak.
+    Internal representation of settings for codespeak.
 
-    - environment: 'prod' or 'dev'
-    - openai_api_key: your openai api key, NOT required in prod
-    - verbose: whether to print out debug statements
-    - abspath_to_project_root: This will be automatically determined the first time a codespeak function is called if it's not set, and it's used to load generated code.
+    - all borrowed from codespeak_config.ConfigOptions, except for abspath_to_project_root
+    - abspath_to_project_root: This will be automatically determined the first time a codespeak function is called if it's empty—it's used to load generated code. Can be manually set with helper func
 
     """
 
@@ -53,24 +47,12 @@ def abspath_to_codegen_dir() -> str:
     return f"{_config.abspath_to_project_root}/{codegen_dirname}"
 
 
-def set_auto_clean(auto_clean: bool):
-    _config.auto_clean = auto_clean
-
-
 def should_auto_clean() -> bool:
     return _config.auto_clean
 
 
-def set_openai_model(model: str):
-    _config.openai_model = model
-
-
 def get_openai_model() -> str:
     return _config.openai_model
-
-
-def manually_set_abspath_to_project_root(abspath: str):
-    _config.abspath_to_project_root = abspath
 
 
 def get_abspath_to_project_root(decorated_func: Callable) -> str:
@@ -81,29 +63,12 @@ def get_abspath_to_project_root(decorated_func: Callable) -> str:
     return _config.abspath_to_project_root
 
 
-def set_openai_api_key(key: str):
-    _config.openai_api_key = key
-
-
 def get_openai_api_key() -> str | None:
     return _config.openai_api_key
 
 
-def set_verbose(verbose: bool):
-    _config.verbose = verbose
-
-
 def get_verbose() -> bool:
     return _config.verbose
-
-
-def set_environment(env: Environment | str):
-    if isinstance(env, Environment):
-        _config.environment = env
-    else:
-        if env not in [e.value for e in Environment]:
-            raise Exception("Environment doesn't exist, use 'prod' or 'dev'")
-        _config.environment = Environment(env)
 
 
 def get_environment() -> Environment:
