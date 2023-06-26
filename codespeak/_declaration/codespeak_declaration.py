@@ -135,6 +135,7 @@ class CodespeakDeclaration(BaseModel):
 
 
 def build_import_defs(signature_defs: List[Definition]) -> Dict[str, List[Definition]]:
+    """imports for the types that are used in the signature"""
     flattened = []
     for _def in signature_defs:
         if _def.type == "LocalClass":

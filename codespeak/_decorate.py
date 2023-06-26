@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, TypeVar
 
 from pydantic import BaseModel
 from codespeak._core.codespeak_service import CodespeakService
@@ -16,9 +16,12 @@ from codespeak._clean import clean
 from codespeak._settings.environment import Environment
 
 
-def codespeak(func):
+R = TypeVar("R")
+
+
+def codespeak(func: Callable[..., R]) -> Callable[..., R]:
     @wraps(func)
-    def dev_execute(*args, **kwargs):
+    def dev_execute(*args: Any, **kwargs: Any) -> R:
         if not hasattr(codespeak_function, "file_service"):
             raise Exception("file service not found")
         file_service = codespeak_function.file_service
@@ -40,7 +43,7 @@ def codespeak(func):
             generation = code_generator.generate()
             if _settings.should_auto_clean():
                 clean(_settings.abspath_to_codegen_dir())
-            return generation.execution_result
+            return generation.execution_result  # type: ignore
         else:
             return executor.execute_with_attributes(
                 file_service.generated_module_qualname,
@@ -55,13 +58,13 @@ def codespeak(func):
         is_prod: bool
         logic: Callable
 
-        def __call__(self, *args, **kwargs):
+        def __call__(self, *args, **kwargs) -> R:
             if self.is_prod:
                 return self.logic(*args, **kwargs)
             else:
                 return dev_execute(*args, **kwargs)
 
-        def assign_pytest_function(self, _pytest_func: Callable):
+        def use_pytest_function(self, _pytest_func: Callable):
             self.pytest_func = TestFunc.from_callable(_pytest_func)
 
     codespeak_function = _CodespeakFunction()
