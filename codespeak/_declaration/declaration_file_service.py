@@ -127,7 +127,6 @@ def derive_generated_module_qualname_from_func(func: Callable) -> str:
     return build_generated_module_qualname(declared_mod_qualname, func.__qualname__)
 
 
-# want to leave this as an attribute on the wrapper, just want to get rid of abspath to root
 def get_declared_module_qualname(func: Callable):
     source_file = inspect.getsourcefile(func)
     if not source_file:

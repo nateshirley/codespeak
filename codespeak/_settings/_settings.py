@@ -23,7 +23,7 @@ class _Settings(BaseModel):
     verbose: bool = False
     abspath_to_project_root: str | None = None
     openai_model: str = "gpt-4"
-    auto_clean: bool = True
+    auto_clean: bool = False
 
     @staticmethod
     def from_env():

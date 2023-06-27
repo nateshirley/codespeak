@@ -43,7 +43,7 @@ You have an entire python interpreter at your disposal. In the completed file, i
 
 Here is a json object that contains metadata about custom python types that are relevant to the file. All of these types are already defined and they're available to your file via import. Do not redefine them. Use them as needed to complete the file:
 ```
-{custom_types}
+{"custom_types": custom_types}
 ```
 
 

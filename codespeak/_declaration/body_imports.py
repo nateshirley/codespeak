@@ -13,7 +13,7 @@ class BodyImports(BaseModel):
     defs: List[Definition]
     statements: List[str]
 
-    def import_text(self) -> str:
+    def imports_text(self) -> str:
         return "\n".join(self.statements)
 
     def insert(self, _obj: Any):
@@ -25,6 +25,7 @@ class BodyImports(BaseModel):
             customs.update(_def.custom_types())
         return customs
 
+    # this is probably buggy
     @staticmethod
     def from_func_source(source_code: str) -> "BodyImports":
         # Get the source code of the function

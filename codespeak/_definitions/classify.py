@@ -140,8 +140,8 @@ def from_any(
         raise Exception("unsure how to handle definition: ", definition)
 
 
-def from_self_class_obj(self_class_obj: Any, method_name: str) -> Definition:
-    _def = from_any(self_class_obj)
+def from_self_class(self_class: Any, method_name: str) -> Definition:
+    _def = from_any(self_class)
     if _def.type == "LocalClass":
         return LocalClassAsSelf(
             qualname=_def.qualname,

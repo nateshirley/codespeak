@@ -5,10 +5,12 @@ from typing import Any, Callable, Dict, List
 from pydantic import BaseModel
 import pytest
 from codespeak._core.codespeak_service import CodespeakService
+from codespeak._declaration.declaration_file_service import DeclarationFileService
+from codespeak._metadata.digest import DeclarationDigest
 from codespeak.public.generated_exception import GeneratedException
 from codespeak._core.executor import execute_unsafe
 from codespeak._core.results_collector import TestRunner
-from codespeak._declaration.codespeak_declaration import CodespeakDeclaration
+from codespeak.inference._resources import Resources
 
 
 class ExecutionResponse(BaseModel):
@@ -42,7 +44,9 @@ class TestFunc(BaseModel):
 
 class CodeGenerator(BaseModel):
     # not modified internally
-    declaration: CodespeakDeclaration
+    resources: Resources
+    file_service: DeclarationFileService
+    digest: DeclarationDigest
     service: CodespeakService
     should_execute: bool
     args: List[Any]
@@ -61,14 +65,14 @@ class CodeGenerator(BaseModel):
     # this should always be called directly after new source code is generated and stored in self.latest_source_code
     def _validate_new_source_code(self) -> GenerationResponse:
         execution_result = None
-        self.declaration.file_service.write_logic(self.latest_source_code)
-        self.declaration.file_service.write_metadata(
-            source_code=self.declaration.source_code,
+        self.file_service.write_logic(self.latest_source_code)
+        self.file_service.write_metadata(
+            source_code=self.resources.declaration_resources.source_code,
             require_execution=self.require_execution,
             did_execute=False,
             has_tests=(not self.test_func is None),
             did_pass_tests=False,
-            digest=self.declaration.digest,
+            digest=self.digest,
         )
         if self.should_execute:
             execution_response = self._try_align_with_execution()
@@ -84,8 +88,8 @@ class CodeGenerator(BaseModel):
     def _try_align_with_execution(self) -> ExecutionResponse:
         try:
             result = execute_unsafe(
-                self.declaration.file_service.generated_module_qualname,
-                self.declaration.file_service.generated_entrypoint,
+                self.file_service.generated_module_qualname,
+                self.file_service.generated_entrypoint,
                 *self.args,
                 **self.kwargs,
             )
@@ -130,37 +134,37 @@ class CodeGenerator(BaseModel):
             raise exception_for_exitcode(test_result.exitcode)
 
     def _write_execution_status(self, did_execute: bool) -> None:
-        prev_metadata = self.declaration.file_service.load_metadata()
+        prev_metadata = self.file_service.load_metadata()
         if prev_metadata:
             has_tests = prev_metadata.has_tests
             did_pass_tests = prev_metadata.did_pass_tests
         else:
             has_tests = not self.test_func is None
             did_pass_tests = False
-        self.declaration.file_service.write_metadata(
-            source_code=self.declaration.source_code,
+        self.file_service.write_metadata(
+            source_code=self.resources.declaration_resources.source_code,
             require_execution=self.require_execution,
             did_execute=did_execute,
             has_tests=has_tests,
             did_pass_tests=did_pass_tests,
-            digest=self.declaration.digest,
+            digest=self.digest,
         )
 
     def _write_test_status(self, has_tests: bool, did_pass_tests: bool) -> None:
-        prev_metadata = self.declaration.file_service.load_metadata()
+        prev_metadata = self.file_service.load_metadata()
         if prev_metadata:
             did_execute = prev_metadata.did_execute
             require_execution = prev_metadata.require_execution
         else:
             did_execute = False
             require_execution = self.should_execute
-        self.declaration.file_service.write_metadata(
-            source_code=self.declaration.source_code,
+        self.file_service.write_metadata(
+            source_code=self.resources.declaration_resources.source_code,
             require_execution=require_execution,
             did_execute=did_execute,
             has_tests=has_tests,
             did_pass_tests=did_pass_tests,
-            digest=self.declaration.digest,
+            digest=self.digest,
         )
 
 

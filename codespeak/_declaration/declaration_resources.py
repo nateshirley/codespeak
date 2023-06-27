@@ -1,6 +1,7 @@
 import ast
 import inspect
 import json
+import re
 import textwrap
 from typing import Any, Callable, Dict, List, Optional
 from pydantic import BaseModel, validator
@@ -13,15 +14,21 @@ from codespeak._definitions.utils.dedupe import dedupe
 from codespeak._definitions.utils.group import group_by_module
 from codespeak._declaration.body_imports import BodyImports
 from codespeak.public import generated_exception
-from codespeak._metadata.digest import DeclarationDigest
 
 # okay so this is at odds with the Inference class at the moment
 # this could almost be like, DeclaredResources
 # okay so this should be like, inside resources
 #
+"""
+will probably want to move the digest out of here too
+
+and then some to the _Inference class
+"""
 
 
-class CodespeakDeclaration(BaseModel):
+class DeclarationResources(BaseModel):
+    """Resources that are imputed from the function's declaration"""
+
     name: str
     qualname: str
     module_name: str
@@ -29,32 +36,18 @@ class CodespeakDeclaration(BaseModel):
     source_code: str
     signature_text: str
     signature_defs: List[Definition]
+    flat_grouped_signature_defs: Dict[str, List[Definition]]
+    self_definition: Definition | None = None
     computed_custom_types: Dict | None = None
-    computed_digest: DeclarationDigest | None = None
-    body_imports: BodyImports
-    import_defs: Dict[str, List[Definition]]
 
     def compute_custom_types(self):
         defs = {}
         for _def in self.signature_defs:
             defs.update(_def.custom_types())
-        defs.update(self.body_imports.custom_types())
+        if self.self_definition:
+            defs.update(self.self_definition.custom_types())
         defs.update(generated_exception.annotate())
         self.computed_custom_types = defs
-
-    def compute_digest(self) -> DeclarationDigest:
-        return DeclarationDigest.from_inputs(
-            declaration_source_code=self.source_code,
-            custom_types=self.as_custom_types_str(),
-        )
-
-    @property
-    def digest(self) -> DeclarationDigest:
-        if not self.computed_digest:
-            self.computed_digest = self.compute_digest()
-        if not self.computed_digest:
-            raise Exception("unable to compute digest")
-        return self.computed_digest
 
     @property
     def custom_types(self) -> Dict:
@@ -68,24 +61,17 @@ class CodespeakDeclaration(BaseModel):
         return json.dumps(self.custom_types, indent=4)
 
     def as_incomplete_file(self) -> str:
-        return self.imports() + "\n" + self.signature_text + "\n"
+        return self.imports_text() + "\n" + self.signature_text + "\n"
 
-    def imports(self) -> str:
-        grouped_defs = self.import_defs
+    # potentially buggy
+    def imports_text(self) -> str:
+        grouped_defs = self.flat_grouped_signature_defs
         _str = ""
         for module, types in grouped_defs.items():
             if module == "builtins" or module == "None":
                 continue
             _str += f"from {module} import {', '.join([_type.qualname for _type in types])}\n"
-        _str += self.body_imports.import_text()
         return _str
-
-    def prompt_inputs(self) -> str:
-        inputs = {
-            "incomplete_file": self.as_incomplete_file(),
-            "custom_types": self.custom_types,
-        }
-        return json.dumps(inputs, indent=4)
 
     def annotate(self) -> Dict:
         signature_defs = {}
@@ -95,31 +81,38 @@ class CodespeakDeclaration(BaseModel):
             "signature_defs": signature_defs,
             "signature_text": self.signature_text,
             "docstring": self.docstring,
-            "imports": self.import_defs,
+            "imports": self.flat_grouped_signature_defs,
         }
+
+    def try_add_self_definition(self, self_type: Any) -> None:
+        if self.self_definition:
+            return
+
+        def text_with_type_after_self(signature_text, self_type_name):
+            def replace(match):
+                return match.group() + ":" + self_type_name
+
+            pattern = r"\(self"
+            new_text = re.sub(pattern, replace, signature_text, count=1)
+            return new_text
+
+        self.self_definition = classify.from_self_class(self_type, self.name)
+        if self.computed_custom_types:
+            """if computed types have already been computed, add the self type to them"""
+            self.computed_custom_types.update(self.self_definition.custom_types())
+        self.signature_text = text_with_type_after_self(
+            self.signature_text, self_type.__name__
+        )
 
     @staticmethod
     def from_inferred_func(
         inferred_func: Callable,
-        self_class_obj: Any | None,
-        with_file_service: DeclarationFileService | None = None,
-    ) -> "CodespeakDeclaration":
+    ) -> "DeclarationResources":
         signature = inspect.signature(inferred_func)
         source_code = textwrap.dedent(inspect.getsource(inferred_func))
-        if self_class_obj:
-            self_definition = classify.from_self_class_obj(
-                self_class_obj, inferred_func.__name__
-            )
-            self_type_name = self_class_obj.__name__
-        else:
-            self_definition = None
-            self_type_name = None
+        signature_defs = declaration_helpers.definitions_for_signature(signature)
 
-        signature_defs = declaration_helpers.definitions_for_signature(
-            signature, self_definition=self_definition
-        )
-
-        return CodespeakDeclaration(
+        return DeclarationResources(
             name=inferred_func.__name__,
             qualname=inferred_func.__qualname__,
             module_name=inferred_func.__module__,
@@ -128,17 +121,19 @@ class CodespeakDeclaration(BaseModel):
             signature_text=declaration_helpers.build_sig_string(
                 func_name=inferred_func.__name__,
                 source_code=source_code,
-                self_type_name=self_type_name,
             ),
             signature_defs=signature_defs,
-            import_defs=build_import_defs(signature_defs=signature_defs),
-            body_imports=BodyImports.from_func_source(source_code),
+            flat_grouped_signature_defs=build_flat_grouped_signature_defs(
+                signature_defs=signature_defs
+            ),
         )
 
 
-# the custom types are already deduped, but they're not grouped
-def build_import_defs(signature_defs: List[Definition]) -> Dict[str, List[Definition]]:
-    """imports for the types that are used in the signature"""
+# this is just to write the imports that are used in the signature's type hints
+def build_flat_grouped_signature_defs(
+    signature_defs: List[Definition],
+) -> Dict[str, List[Definition]]:
+    """imports for the types that are used in the signature. a deduped version of the types, grouped by module"""
     flattened = []
     for _def in signature_defs:
         if _def.type == "LocalClass":

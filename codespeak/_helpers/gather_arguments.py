@@ -1,5 +1,5 @@
 import inspect
-from typing import Any, Callable, Dict, List, OrderedDict
+from typing import Any, Callable, Dict, List, OrderedDict, Tuple
 from pydantic import BaseModel
 
 
@@ -9,7 +9,7 @@ class Argument(BaseModel):
 
 
 def gather_arguments(
-    func: Callable, args: List[Any], kwargs: Dict[str, Any]
+    func: Callable, args: Tuple[Any], kwargs: Dict[str, Any]
 ) -> List[Argument]:
     sig = inspect.signature(func)
     bound = sig.bind(*args, **kwargs)

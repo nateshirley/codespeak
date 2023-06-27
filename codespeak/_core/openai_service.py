@@ -76,7 +76,7 @@ class OpenAIService(BaseModel):
                 stream=True,
             )
             result = ""
-            print("\n\n------START CODEGEN------\n\n")
+            print("\n\n------MAKING INFERENCE------\n\n")
             for chunk in response:
                 chunk: Any = chunk
                 choices: list = chunk.choices
@@ -88,7 +88,7 @@ class OpenAIService(BaseModel):
                 if "content" in delta:
                     result += delta.content
                     print(f"{delta.content}", end="")
-            print("\n\n------END CODEGEN------\n\n")
+            print("\n\n------END INFERENCE------\n\n")
             return result
         except Exception as e:
             if self.num_retries < 5:
