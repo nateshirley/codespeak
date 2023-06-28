@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Tuple
 
 from typing import Literal
 from codespeak.definitions.types.generic import Generic
-from codespeak.definitions.utils.flat_uniques import flat_uniques
 from codespeak.definitions.definition import Definition
 from codespeak.definitions.utils.swap_custom_types import (
     recursively_swap_custom_types_for_references,

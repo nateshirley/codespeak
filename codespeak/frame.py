@@ -1,7 +1,7 @@
 import inspect
 import json
 import sys
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Set, Tuple
 
 from pydantic import BaseModel
 from codespeak.definitions import classify
@@ -19,13 +19,13 @@ function_manager = FunctionManager()
 
 
 class Frame(BaseModel):
-    defs: List[Definition] = []
+    definitions: Set[Definition] = set()
     tests: FunctionTests = FunctionTests()
     parents: List["Frame"] = []
 
     def custom_types(self) -> Dict:
         types_ = {}
-        for _class in self.defs:
+        for _class in self.definitions:
             types_.update(_class.custom_types())
         for parent in self.parents:
             types_.update(parent.custom_types())
@@ -34,14 +34,16 @@ class Frame(BaseModel):
     def printable_custom_types(self) -> str:
         return json.dumps(self.custom_types(), indent=4)
 
-    def printable_definitions(self) -> str:
-        return json.dumps([d.annotate() for d in self.all_definitions], indent=4)
+    def printable_definitions_with_inheritance(self) -> str:
+        return json.dumps(
+            [d.annotate() for d in self.definitions_with_inheritance], indent=4
+        )
 
     def add_classes(self, *classes: type):
         for _class in classes:
             if not inspect.isclass(_class):
                 raise ValueError(f"Expected class object, got {type(_class).__name__}")
-            self.defs.append(classify.from_any(_class))
+            self.definitions.add(classify.from_any(_class))
 
     def add_test_function(self, test_func: Callable):
         if not test_func.__name__.startswith("test_"):
@@ -51,11 +53,11 @@ class Frame(BaseModel):
         self.tests.test_functions.append(TestFunction.from_callable(test_func))
 
     @property
-    def all_definitions(self) -> List[Definition]:
-        defs = []
+    def definitions_with_inheritance(self) -> Set[Definition]:
+        defs = set()
         for parent in self.parents:
-            defs.extend(parent.all_definitions)
-        defs.extend(self.defs)
+            defs.update(parent.definitions_with_inheritance)
+        defs.update(self.definitions)
         return defs
 
     @staticmethod

@@ -13,6 +13,14 @@ class Definition(ABC, BaseModel):
     type: Literal["Definition"] = "Definition"
     _def: Any
 
+    def __hash__(self):
+        return hash((self.module, self.qualname))
+
+    def __eq__(self, other):
+        if isinstance(other, Definition):
+            return (self.module, self.qualname) == (other.module, other.qualname)
+        return False
+
     def printable(self) -> str:
         return json.dumps(self.annotate(), indent=4)
 

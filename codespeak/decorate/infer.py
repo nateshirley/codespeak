@@ -12,7 +12,6 @@ from codespeak.helpers.guarantee_abspath_to_root_exists import (
     guarantee_abspath_to_project_root_exists,
 )
 from codespeak.settings import _settings
-from codespeak.clean import clean
 from codespeak.settings.environment import Environment
 from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
@@ -75,7 +74,7 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
             wrapper,
             FunctionAttributes.frame,
             Frame(
-                defs=signature_definitions,
+                definitions=signature_definitions,
                 tests=FunctionTests(),
                 parents=[Frame.for_module(decorated_func.__module__)],
             ),

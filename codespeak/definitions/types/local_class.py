@@ -3,10 +3,6 @@ from typing import Any, Callable, Dict, List, Tuple
 from typing import Literal
 from codespeak.definitions.definition import Definition
 from codespeak.definitions.types.custom_type_reference import CustomTypeReference
-from codespeak.definitions.utils.dedupe import dedupe
-from codespeak.definitions.utils.flat_uniques import flat_uniques
-from codespeak.definitions.utils.flatten import flatten_definitions
-import ast
 
 
 class LocalClass(Definition):
