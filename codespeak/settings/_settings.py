@@ -25,7 +25,7 @@ class _Settings(BaseModel):
     @staticmethod
     def from_env():
         env = os.getenv("ENVIRONMENT")
-        if env:
+        if env is not None:
             env = env.lower()
             if env in [e.value for e in Environment]:
                 return _Settings(

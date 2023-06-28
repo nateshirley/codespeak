@@ -118,9 +118,10 @@ class Function:
         return json.dumps(inputs, indent=4)
 
     def _try_add_self_to_frame(self, args: Tuple[Any], kwargs: Dict[str, Any]):
-        self_type = self_type_if_exists(self.func, args, kwargs)
-        if self_type:
-            self.declaration.try_add_self_definition(self_type)
+        if self.declaration.self_definition is None:
+            self_type = self_type_if_exists(self.func, args, kwargs)
+            if self_type is not None:
+                self.declaration.try_add_self_definition(self_type)
 
     def should_infer_new_source_code(self) -> bool:
         return _should_infer_new_source_code(self._file_service, self._digest)

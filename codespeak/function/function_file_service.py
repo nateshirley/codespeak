@@ -68,7 +68,7 @@ class FunctionFileService(BaseModel):
     @staticmethod
     def gather_generated_module_qualname(decorated_func: Callable) -> str:
         module = inspect.getmodule(decorated_func)
-        if not module:
+        if module is None:
             raise Exception("module not found for func: ", decorated_func.__name__)
         declared_module_qualname = derive_module_qualname_for_object(decorated_func)
         return build_generated_module_qualname(
@@ -79,7 +79,7 @@ class FunctionFileService(BaseModel):
     @staticmethod
     def from_decorated_func(func: Callable) -> "FunctionFileService":
         module = inspect.getmodule(func)
-        if not module:
+        if module is None:
             raise Exception("module not found for func: ", func.__name__)
         abspath_to_proj = _settings.get_abspath_to_project_root()
         declared_module_qualname = derive_module_qualname_for_object(func)

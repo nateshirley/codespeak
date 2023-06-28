@@ -99,7 +99,7 @@ class CodespeakService(BaseModel):
     def _guarantee_source_formatting(self, response: str) -> str:
         pattern = r"```python(.*?)```"
         match = re.search(pattern, response, re.DOTALL)
-        if match:
+        if match is not None:
             return match.group(
                 1
             ).strip()  # group(1) to get the content between the backticks

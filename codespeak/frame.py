@@ -86,6 +86,7 @@ class Frame(BaseModel):
 
     @staticmethod
     def for_module(name: str) -> "Frame":
+        """Create a frame for a module, whose resources will be used by all inferred functions in that module"""
         mod = sys.modules.get(name)
         guarantee_abspath_to_project_root_exists(mod)
         if mod is None:

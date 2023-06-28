@@ -34,7 +34,7 @@ class FunctionDeclaration(BaseModel):
         return _str
 
     def try_add_self_definition(self, self_definition: Definition) -> None:
-        if self.self_definition:
+        if self.self_definition is not None:
             return
 
         def text_with_type_name_after_self(signature_text, self_type_name):

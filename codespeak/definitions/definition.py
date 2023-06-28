@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from typing import Literal
 
 
-# needs to go above below imports
 class Definition(ABC, BaseModel):
     qualname: str
     module: str

@@ -80,7 +80,7 @@ class OpenAIService(BaseModel):
             for chunk in response:
                 chunk: Any = chunk
                 choices: list = chunk.choices
-                if not choices:
+                if choices is None:
                     raise Exception("choices does not exist on completion")
                 if len(choices) == 0:
                     continue
