@@ -15,7 +15,7 @@ from codespeak.settings import _settings
 from codespeak.settings.environment import Environment
 from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
-from codespeak.function.function_tests import FunctionTests
+from codespeak.frame_tests import FrameTests
 from codespeak.frame import Frame
 from codespeak.helpers.get_definitions_from_function_signature import (
     get_definitions_from_function_signature,
@@ -75,7 +75,7 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
             FunctionAttributes.frame,
             Frame(
                 definitions=signature_definitions,
-                tests=FunctionTests(),
+                tests=FrameTests(),
                 parents=[Frame.for_module(decorated_func.__module__)],
             ),
         )

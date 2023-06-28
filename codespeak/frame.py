@@ -8,7 +8,7 @@ from codespeak.definitions import classify
 from codespeak.definitions.definition import Definition
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.function.function_manager import FunctionManager
-from codespeak.function.function_tests import FunctionTests
+from codespeak.frame_tests import FrameTests
 from codespeak.helpers.guarantee_abspath_to_root_exists import (
     guarantee_abspath_to_project_root_exists,
 )
@@ -20,7 +20,7 @@ function_manager = FunctionManager()
 
 class Frame(BaseModel):
     definitions: Set[Definition] = set()
-    tests: FunctionTests = FunctionTests()
+    tests: FrameTests = FrameTests()
     parents: List["Frame"] = []
 
     def custom_types(self) -> Dict:
