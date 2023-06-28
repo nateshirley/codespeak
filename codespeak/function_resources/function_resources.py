@@ -8,8 +8,9 @@ from codespeak.function_resources.declaration_resources import (
     DeclarationResources,
 )
 
-# getting rid of body resources, fuck em
-# get r
+# maybe I'll just pull out programmable resources into this class and add declaration resources onto the
+# I want to associate declaration resources with the function, but only on my side of the fence
+# okay so just make it private
 
 
 class FunctionResources(BaseModel):
@@ -33,3 +34,6 @@ class FunctionResources(BaseModel):
             "custom_types": self.custom_types(),
         }
         return json.dumps(inputs, indent=4)
+
+    # def stringified_schema(self) -> Dict:
+    #     return json.dumps(self.custom_types(), indent=4)

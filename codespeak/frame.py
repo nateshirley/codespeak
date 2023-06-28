@@ -7,6 +7,12 @@ from codespeak.function_resources.function_resources import FunctionResources
 from codespeak.function.function_tests import FunctionTests
 from codespeak.helpers.self_type import self_type_if_exists
 
+# uses: list of frames?
+# frames can have frames
+# children?
+# parents?
+# parents is fine
+
 
 class Frame:
     resources: FunctionResources
