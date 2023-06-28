@@ -11,3 +11,4 @@ from .public.settings import (
 )
 from .public.example_return import example
 from .public.inferred_exception import InferredException
+from .module_frame import ModuleFrame

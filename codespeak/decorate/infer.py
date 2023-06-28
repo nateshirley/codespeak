@@ -18,11 +18,11 @@ from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.function_resources.function_resources import FunctionResources
 from codespeak.function.function_tests import FunctionTests
-from codespeak.function_resources.body_resources import BodyResources
 from codespeak.function_resources.programmable_resources import (
     ProgrammableResources,
 )
 from codespeak.frame import Frame
+from unittest.mock import patch
 
 # type inference remain on original function when no type hints are on the decorator
 
@@ -70,13 +70,11 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
             declaration_resources=DeclarationResources.from_inferred_func(
                 inferred_func=decorated_func,
             ),
-            body_resources=BodyResources.from_decorated_func(decorated_func),
             programmable_resources=ProgrammableResources(classes=[]),
         )
         frame = Frame(
             resources=resources,
             tests=FunctionTests(),
-            goal=inspect.getdoc(decorated_func) or "",
         )
         setattr(
             wrapper,

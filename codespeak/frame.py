@@ -11,15 +11,11 @@ from codespeak.helpers.self_type import self_type_if_exists
 class Frame:
     resources: FunctionResources
     tests: FunctionTests
-    goal: str
     manager = FunctionManager()
 
-    def __init__(
-        self, resources: FunctionResources, tests: FunctionTests, goal: str
-    ) -> None:
+    def __init__(self, resources: FunctionResources, tests: FunctionTests) -> None:
         self.resources = resources
         self.tests = tests
-        self.goal = goal
 
     def add_classes(self, *classes: type):
         for _class in classes:
@@ -29,12 +25,12 @@ class Frame:
                 classify.from_any(_class)
             )
 
-    def add_pytest_function(self, test_func: Callable):
+    def add_test_function(self, test_func: Callable):
         if not test_func.__name__.startswith("test_"):
             raise ValueError(
                 f"Expected function name to start with 'test_', got {test_func.__name__}"
             )
-        self.tests.pytest_functions.append(test_func)
+        self.tests.test_functions.append(test_func)
 
     @staticmethod
     def this() -> "Frame":
