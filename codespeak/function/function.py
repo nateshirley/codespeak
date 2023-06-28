@@ -1,8 +1,10 @@
 import inspect
+import json
 from typing import Any, Callable, Dict, List, ClassVar, Tuple
 from codespeak import executor
+from codespeak.function.function_declaration import FunctionDeclaration
 from codespeak.helpers.self_type import self_type_if_exists
-from codespeak.inference.inference_engine import InferenceEngine, TestFunc
+from codespeak.inference.inference_engine import InferenceEngine, TestFunction
 from codespeak.inference.codespeak_service import CodespeakService
 from codespeak.frame import Frame
 from codespeak.function.function_file_service import FunctionFileService
@@ -28,8 +30,8 @@ class Function:
             )
         self.func = func
         self._digest = FunctionDigest.from_inputs(
-            declaration_source_code=self.frame.resources.declaration_resources.source_code,
-            custom_types=self.frame.resources.custom_types(),
+            declaration_source_code=self.declaration.source_code,
+            custom_types=self.frame.custom_types(),
         )
 
     @property
@@ -40,6 +42,10 @@ class Function:
             module_qualname=self._file_service.generated_module_qualname,
             func_name=self._file_service.generated_entrypoint,
         )
+
+    @property
+    def declaration(self) -> FunctionDeclaration:
+        return getattr(self.func, FunctionAttributes.declaration)
 
     @property
     def frame(self) -> Frame:
@@ -81,14 +87,15 @@ class Function:
     ) -> MakeInferenceResponse:
         if _settings.get_environment() == _settings.Environment.PROD:
             raise Exception("Make is not available in production.")
-        pytest_func: TestFunc | None = self.frame.tests.try_get_test_func()
         inference_engine = InferenceEngine(
-            resources=self.frame.resources,
+            function_declaration=self.declaration,
             digest=self._digest,
-            codespeak_service=CodespeakService.with_defaults(self.frame.resources),
+            codespeak_service=CodespeakService.with_defaults(
+                function_declaration=self.declaration, frame=self.frame
+            ),
             file_service=self._file_service,
             should_execute=should_execute,
-            test_func=pytest_func,
+            test_functions=self.frame.tests.test_functions,
             args=list(args),
             kwargs=kwargs,
         )
@@ -103,12 +110,17 @@ class Function:
             source_code=inference_engine.latest_source_code,
         )
 
+    def inference_inputs(self) -> str:
+        inputs = {
+            "incomplete_file": self.declaration.as_incomplete_file(),
+            "custom_types": self.frame.custom_types(),
+        }
+        return json.dumps(inputs, indent=4)
+
     def _try_add_self_to_frame(self, args: Tuple[Any], kwargs: Dict[str, Any]):
         self_type = self_type_if_exists(self.func, args, kwargs)
         if self_type:
-            self.frame.resources.declaration_resources.try_add_self_definition(
-                self_type
-            )
+            self.declaration.try_add_self_definition(self_type)
 
     def should_infer_new_source_code(self) -> bool:
         return _should_infer_new_source_code(self._file_service, self._digest)

@@ -2,7 +2,7 @@ import inspect
 from typing import Callable
 
 
-def auto_detect_abspath_to_project_root(decorated_func: Callable):
+def auto_detect_abspath_to_project_root(object_in_project_abspath: str):
     import os
 
     setup_files = [
@@ -13,8 +13,7 @@ def auto_detect_abspath_to_project_root(decorated_func: Callable):
         "environment.yml",
     ]
 
-    func_path = inspect.getabsfile(decorated_func)
-    current_directory = func_path
+    current_directory = object_in_project_abspath
 
     while current_directory != "/":
         for file in setup_files:

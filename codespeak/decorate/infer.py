@@ -5,24 +5,21 @@ from codespeak import executor
 from codespeak.function.function_file_service import (
     FunctionFileService,
 )
-from codespeak.function_resources.declaration_resources import (
-    DeclarationResources,
+from codespeak.function.function_declaration import (
+    FunctionDeclaration,
 )
-from codespeak.helpers.auto_detect_abspath_to_project_root import (
-    auto_detect_abspath_to_project_root,
+from codespeak.helpers.guarantee_abspath_to_root_exists import (
+    guarantee_abspath_to_project_root_exists,
 )
 from codespeak.settings import _settings
-from codespeak.clean import clean
 from codespeak.settings.environment import Environment
 from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
-from codespeak.function_resources.function_resources import FunctionResources
 from codespeak.function.function_tests import FunctionTests
-from codespeak.function_resources.body_resources import BodyResources
-from codespeak.function_resources.programmable_resources import (
-    ProgrammableResources,
-)
 from codespeak.frame import Frame
+from codespeak.helpers.get_definitions_from_function_signature import (
+    get_definitions_from_function_signature,
+)
 
 # type inference remain on original function when no type hints are on the decorator
 
@@ -36,7 +33,7 @@ def infer(func):
             nonlocal has_executed
             function = Function(wrapper)
             if not has_executed:
-                with Frame.manager.manage_for(wrapper):
+                with Frame.get_manager().manage_for(wrapper):
                     func(*args, **kwargs)
                 function._try_add_self_to_frame(args, kwargs)
 
@@ -51,6 +48,7 @@ def infer(func):
 def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
     env = _settings.get_environment()
     setattr(wrapper, FunctionAttributes.is_prod, env == Environment.PROD)
+    guarantee_abspath_to_project_root_exists(decorated_func)
     if env == _settings.Environment.PROD:
         logic = executor.load_generated_logic_from_module_qualname(
             FunctionFileService.gather_generated_module_qualname(
@@ -60,26 +58,24 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
         )
         setattr(wrapper, FunctionAttributes.logic, logic)
     elif env == _settings.Environment.DEV:
-        if _settings._settings.abspath_to_project_root is None:
-            _settings.set_abspath_to_project_root(
-                auto_detect_abspath_to_project_root(decorated_func)
-            )
         file_service = FunctionFileService.from_decorated_func(decorated_func)
         setattr(wrapper, FunctionAttributes.file_service, file_service)
-        resources = FunctionResources(
-            declaration_resources=DeclarationResources.from_inferred_func(
-                inferred_func=decorated_func,
-            ),
-            body_resources=BodyResources.from_decorated_func(decorated_func),
-            programmable_resources=ProgrammableResources(classes=[]),
+        signature_definitions = get_definitions_from_function_signature(
+            inspect.signature(decorated_func)
         )
-        frame = Frame(
-            resources=resources,
-            tests=FunctionTests(),
-            goal=inspect.getdoc(decorated_func) or "",
+        setattr(
+            wrapper,
+            FunctionAttributes.declaration,
+            FunctionDeclaration.from_inferred_func(
+                decorated_func, signature_definitions
+            ),
         )
         setattr(
             wrapper,
             FunctionAttributes.frame,
-            frame,
+            Frame(
+                definitions=signature_definitions,
+                tests=FunctionTests(),
+                parents=[Frame.for_module(decorated_func.__module__)],
+            ),
         )

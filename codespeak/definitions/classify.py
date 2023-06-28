@@ -1,13 +1,11 @@
 import types
 from typing import Any, Callable, Dict, Tuple, get_origin
-import builtins
 from typing import Any, Union, get_args, get_origin, List, get_type_hints
 import inspect
 from codespeak.definitions.free_modules import FREE_MODULES
 import os
 import types
 from codespeak.definitions.definition import Definition
-from codespeak.definitions.types.generic import Generic
 from codespeak.definitions.types.local_class import LocalClass
 from codespeak.definitions.types.local_class_as_self import LocalClassAsSelf
 from codespeak.helpers.derive_module_qualname_for_object import (
@@ -167,6 +165,3 @@ def collect_type_hints(_class: type) -> Dict[str, Definition]:
         typed_def = from_any(_def)
         definitions[name] = typed_def
     return definitions
-
-
-# so get_type_hints works for reg classes as long as the instance vars are an_assigned. so it would bundle class vars and instance vars together

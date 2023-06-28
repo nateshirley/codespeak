@@ -4,11 +4,11 @@ import textwrap
 
 def make_prompt(
     incomplete_file: str,
-    custom_types: str,
+    custom_types_str: str,
     declaration_docstring: str,
     verbose: bool = True,
 ) -> str:
-    text = prompt_text(incomplete_file, custom_types, declaration_docstring)
+    text = prompt_text(incomplete_file, custom_types_str, declaration_docstring)
     if verbose:
         print("\n\n------START PROMPT------\n\n")
         print(text)
@@ -17,7 +17,7 @@ def make_prompt(
 
 
 def prompt_text(
-    incomplete_file: str, custom_types: str, declaration_docstring: str
+    incomplete_file: str, custom_types_str: str, declaration_docstring: str
 ) -> str:
     return textwrap.dedent(
         f"""
@@ -43,7 +43,7 @@ You have an entire python interpreter at your disposal. In the completed file, i
 
 Here is a json object that contains metadata about custom python types that are relevant to the file. All of these types are already defined and they're available to your file via import. Do not redefine them. Use them as needed to complete the file:
 ```
-{custom_types}
+{custom_types_str}
 ```
 
 

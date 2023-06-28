@@ -1,10 +1,12 @@
+import json
 import re
 from pydantic import BaseModel
+from codespeak.frame import Frame
+from codespeak.function.function_declaration import FunctionDeclaration
 from codespeak.inference import prompt
 from codespeak.inference.openai_service import OpenAIService, Roles
 from codespeak.inference.results_collector import CrashReport
 from codespeak.settings._settings import get_verbose
-from codespeak.function_resources.function_resources import FunctionResources
 
 
 class IterationState(BaseModel):
@@ -19,21 +21,27 @@ class IterationState(BaseModel):
 class CodespeakService(BaseModel):
     openai_service: OpenAIService
     iterations: IterationState
-    resources: FunctionResources
+    function_declaration: FunctionDeclaration
+    frame: Frame
 
     @staticmethod
-    def with_defaults(resources: FunctionResources) -> "CodespeakService":
+    def with_defaults(
+        function_declaration: FunctionDeclaration, frame: Frame
+    ) -> "CodespeakService":
         return CodespeakService(
             openai_service=OpenAIService.with_defaults(),
             iterations=IterationState(),
-            resources=resources,
+            function_declaration=function_declaration,
+            frame=frame,
         )
 
     def generate_source_code(self) -> str:
+        custom_types = {"custom_types": self.frame.custom_types()}
+        custom_types_str = json.dumps(custom_types, indent=4)
         _prompt = prompt.make_prompt(
-            incomplete_file=self.resources.declaration_resources.as_incomplete_file(),
-            custom_types=self.resources.as_custom_types_str(),
-            declaration_docstring=self.resources.declaration_resources.docstring,
+            incomplete_file=self.function_declaration.as_incomplete_file(),
+            custom_types_str=custom_types_str,
+            declaration_docstring=self.function_declaration.docstring,
             verbose=get_verbose(),
         )
         return self._fetch_new_source_code(prompt=_prompt)
@@ -53,7 +61,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_code_versions < self.iterations.max_code_versions:
             print(
                 "regenerating for func: ",
-                self.resources.declaration_resources.qualname,
+                self.function_declaration.qualname,
                 " num attempt: ",
                 self.iterations.num_code_versions + 1,
             )
@@ -64,7 +72,7 @@ class CodespeakService(BaseModel):
             )
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.resources.declaration_resources.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.function_declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def try_regenerate_from_test_failure(
@@ -73,7 +81,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_test_versions < self.iterations.max_test_versions:
             print(
                 "regenerating after failed tests for func: ",
-                self.resources.declaration_resources.qualname,
+                self.function_declaration.qualname,
                 " num attempt: ",
                 self.iterations.num_test_versions + 1,
             )
@@ -85,7 +93,7 @@ class CodespeakService(BaseModel):
             return self._fetch_new_source_code(prompt=prompt)
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.resources.declaration_resources.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.function_declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def _guarantee_source_formatting(self, response: str) -> str:
