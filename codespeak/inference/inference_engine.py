@@ -4,13 +4,14 @@ import inspect
 from typing import Any, Callable, Dict, List
 from pydantic import BaseModel
 import pytest
+from codespeak.function.function_declaration import FunctionDeclaration
 from codespeak.inference.codespeak_service import CodespeakService
 from codespeak.function.function_file_service import FunctionFileService
 from codespeak.function.function_digest import FunctionDigest
 from codespeak.public.inferred_exception import InferredException
 from codespeak.executor import execute_unchecked
 from codespeak.inference.results_collector import TestRunner
-from codespeak.function_resources.function_resources import FunctionResources
+from codespeak.test_function import TestFunction
 
 
 class ExecutionResponse(BaseModel):
@@ -26,32 +27,16 @@ class GenerationResponse(BaseModel):
     execution_result: Any | None = None
 
 
-class TestFunc(BaseModel):
-    file: str
-    qualname: str
-    source_code: str
-
-    @staticmethod
-    def from_callable(test_func: Callable) -> "TestFunc":
-        source_code = inspect.getsource(test_func)
-        file = inspect.getfile(test_func)
-        return TestFunc(
-            file=file,
-            qualname=test_func.__qualname__,
-            source_code=source_code,
-        )
-
-
 class InferenceEngine(BaseModel):
     # not modified internally
-    resources: FunctionResources
+    function_declaration: FunctionDeclaration
     file_service: FunctionFileService
     digest: FunctionDigest
     codespeak_service: CodespeakService
     should_execute: bool
     args: List[Any]
     kwargs: Dict[str, Any]
-    test_func: TestFunc | None
+    test_functions: List[TestFunction]
     latest_source_code: str = ""
 
     def make_inference(self) -> GenerationResponse:
@@ -62,15 +47,19 @@ class InferenceEngine(BaseModel):
     def require_execution(self) -> bool:
         return self.should_execute
 
+    @property
+    def has_tests(self) -> bool:
+        return len(self.test_functions) > 0
+
     # this should always be called directly after new source code is generated and stored in self.latest_source_code
     def _validate_new_source_code(self) -> GenerationResponse:
         execution_result = None
         self.file_service.write_logic(self.latest_source_code)
         self.file_service.write_metadata(
-            source_code=self.resources.declaration_resources.source_code,
+            source_code=self.function_declaration.source_code,
             require_execution=self.require_execution,
             did_execute=False,
-            has_tests=(not self.test_func is None),
+            has_tests=self.has_tests,
             did_pass_tests=False,
             digest=self.digest,
         )
@@ -79,7 +68,7 @@ class InferenceEngine(BaseModel):
             execution_result = execution_response.result
             if execution_response.did_regenerate_source:
                 return self._validate_new_source_code()
-        if self.test_func:
+        if self.has_tests:
             test_response = self._try_align_with_tests()
             if test_response.did_regenerate_source:
                 return self._validate_new_source_code()
@@ -111,31 +100,35 @@ class InferenceEngine(BaseModel):
                 return ExecutionResponse(result=None, did_regenerate_source=True)
 
     def _try_align_with_tests(self) -> TestResponse:
-        if not self.test_func:
+        if not self.has_tests:
             raise Exception("trying to test without a test func")
         self._write_test_status(has_tests=False, did_pass_tests=False)
-        test_result = TestRunner.run_test_func(
-            test_file=self.test_func.file,
-            test_func_qualname=self.test_func.qualname,
-        )
-        did_pass_tests = test_result.exitcode == pytest.ExitCode.OK
-        self._write_test_status(has_tests=False, did_pass_tests=did_pass_tests)
-        if test_result.exitcode == pytest.ExitCode.OK:
-            print(f"All tests passed successfully in {test_result.total_duration}s")
-            return TestResponse(did_regenerate_source=False)
-        elif test_result.exitcode == pytest.ExitCode.TESTS_FAILED:
-            print("Some tests failed.")
-            if len(test_result.crash_reports) == 0:
-                raise Exception("no crash reports but tests failed")
-            self.latest_source_code = (
-                self.codespeak_service.try_regenerate_from_test_failure(
-                    test_source_code=self.test_func.source_code,
-                    crash_report=test_result.crash_reports[0],
-                )
+        total_duration = 0
+        for test_function in self.test_functions:
+            test_result = TestRunner.run_test_func(
+                test_file=test_function.file,
+                test_func_qualname=test_function.qualname,
             )
-            return TestResponse(did_regenerate_source=True)
-        else:
-            raise exception_for_exitcode(test_result.exitcode)
+            total_duration += test_result.total_duration
+            if test_result.exitcode == pytest.ExitCode.OK:
+                continue
+            elif test_result.exitcode == pytest.ExitCode.TESTS_FAILED:
+                self._write_test_status(has_tests=False, did_pass_tests=False)
+                print("Some tests failed.")
+                if len(test_result.crash_reports) == 0:
+                    raise Exception("no crash reports but tests failed")
+                self.latest_source_code = (
+                    self.codespeak_service.try_regenerate_from_test_failure(
+                        test_source_code=test_function.source_code,
+                        crash_report=test_result.crash_reports[0],
+                    )
+                )
+                return TestResponse(did_regenerate_source=True)
+            else:
+                raise exception_for_exitcode(test_result.exitcode)
+        print(f"All tests passed successfully in {total_duration}s")
+        self._write_test_status(has_tests=False, did_pass_tests=True)
+        return TestResponse(did_regenerate_source=False)
 
     def _write_execution_status(self, did_execute: bool) -> None:
         prev_metadata = self.file_service.load_metadata()
@@ -143,10 +136,10 @@ class InferenceEngine(BaseModel):
             has_tests = prev_metadata.has_tests
             did_pass_tests = prev_metadata.did_pass_tests
         else:
-            has_tests = not self.test_func is None
+            has_tests = self.has_tests
             did_pass_tests = False
         self.file_service.write_metadata(
-            source_code=self.resources.declaration_resources.source_code,
+            source_code=self.function_declaration.source_code,
             require_execution=self.require_execution,
             did_execute=did_execute,
             has_tests=has_tests,
@@ -163,7 +156,7 @@ class InferenceEngine(BaseModel):
             did_execute = False
             require_execution = self.should_execute
         self.file_service.write_metadata(
-            source_code=self.resources.declaration_resources.source_code,
+            source_code=self.function_declaration.source_code,
             require_execution=require_execution,
             did_execute=did_execute,
             has_tests=has_tests,
