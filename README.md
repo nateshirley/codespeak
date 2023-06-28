@@ -96,7 +96,7 @@ Currently, Codespeak receives tests exclusively in the form of pytest functions.
 
 ### Access and manipulate generated logic in your file system
 
-When Codespeak implements your functions, they're written to the file system in a `codespeak_generated/` directory under the same hiearchy as they are defined.
+When Codespeak implements your functions, they're written to the file system in a `codespeak_inferred/` directory under the same hiearchy as they are defined.
 
 Each function is implemented in its own file, named after the function. To view or edit logic for a function, simply visit the file at [function_name].
 
