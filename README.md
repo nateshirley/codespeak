@@ -1,6 +1,6 @@
 # <img src="https://raw.githubusercontent.com/nateshirley/codespeak-assets/main/speaker.png" style="zoom:17%;" /> Codespeak
 
-Codespeak is a python framework for writing *Inferred Functions*—functions that implement themselves. 
+Codespeak is a python framework for writing *Inferred Functions*—functions that implement their own logic. 
 
 ## Installation
 
@@ -47,9 +47,9 @@ To use this function, simply declare it as shown above, then call it.
 
 ### Add resources to your functions with Frames
 
-In Codespeak, Frames hold resources used to make inferences.
+Every inferred function has a Frame. Frames hold resources used to make inferences.
 
-Every inferred function comes with its own Frame, and the types in a function's declaration are always bundled to its Frame. For the `orders_for_user_since_date` function shown above, Session, User, datetime, List, and Order would be automatically added to the function's frame at import time.
+The types in a function's declaration are always bundled to its Frame. For the `orders_for_user_since_date` function shown above, Session, User, datetime, List, and Order would be automatically added to the function's frame at import time.
 
 In many cases, function declarations on their own provide enough information for Codespeak to make performant inferences.
 
