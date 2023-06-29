@@ -96,17 +96,24 @@ class FunctionFileService(BaseModel):
             codegen_absolute_dirpath=f"{abspath_to_proj}/{codegen_dirname}/{declared_module_as_filepath}",
         )
 
-    def does_metadata_exist(self) -> bool:
+    def does_previous_inference_exist(self) -> bool:
         return os.path.exists(self.codegen_logic_filepath) and os.path.exists(
             self.codegen_metadata_filepath
         )
 
+    def does_logic_exist(self) -> bool:
+        return os.path.exists(self.codegen_logic_filepath)
+
     def load_metadata(self) -> FunctionMetadata | None:
         if not os.path.exists(self.codegen_metadata_filepath):
             return None
-        with open(self.codegen_metadata_filepath, "r") as file:
-            data = json.load(file)
-        return FunctionMetadata.parse_obj(data)
+        try:
+            with open(self.codegen_metadata_filepath, "r") as file:
+                data = json.load(file)
+            return FunctionMetadata.parse_obj(data)
+        except Exception as e:
+            print("unable to load metadata")
+            return None
 
     def load_logic(self) -> str:
         with open(self.codegen_logic_filepath, "r") as file:

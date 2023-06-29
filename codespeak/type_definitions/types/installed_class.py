@@ -1,9 +1,9 @@
 from typing import Any, Callable, Dict
 from typing import Literal
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
-class InstalledClass(Definition):
+class InstalledClass(TypeDefinition):
     type: Literal["InstalledClass"] = "InstalledClass"
     origin: str = "installed"
 

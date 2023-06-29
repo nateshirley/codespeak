@@ -1,12 +1,12 @@
 from typing import List, Tuple
 
-from codespeak.definitions.definition import Definition
-from codespeak.definitions.types.custom_type_reference import CustomTypeReference
+from codespeak.type_definitions.type_definition import TypeDefinition
+from codespeak.type_definitions.types.custom_type_reference import CustomTypeReference
 
 
 def recursively_swap_custom_types_for_references(
-    args: List[Definition],
-) -> Tuple[List[Definition], List[Definition]]:
+    args: List[TypeDefinition],
+) -> Tuple[List[TypeDefinition], List[TypeDefinition]]:
     swapped = []
     for i, _def in enumerate(args):
         if _def.type == "TypingType" or _def.type == "UnionType":

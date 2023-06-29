@@ -1,9 +1,9 @@
 from pydantic import BaseModel
 from typing import Dict, Literal
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
-class Generic(Definition):
+class Generic(TypeDefinition):
     type: Literal["Generic"] = "Generic"
 
     def annotate(self) -> Dict:

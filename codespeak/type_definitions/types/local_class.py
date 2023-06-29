@@ -1,19 +1,19 @@
 from typing import Any, Callable, Dict, List, Tuple
 
 from typing import Literal
-from codespeak.definitions.definition import Definition
-from codespeak.definitions.types.custom_type_reference import CustomTypeReference
+from codespeak.type_definitions.type_definition import TypeDefinition
+from codespeak.type_definitions.types.custom_type_reference import CustomTypeReference
 
 
-class LocalClass(Definition):
+class LocalClass(TypeDefinition):
     type: Literal["LocalClass"] = "LocalClass"
     source_code: str
-    bases: List[Definition]
-    type_hints: Dict[str, Definition]
+    bases: List[TypeDefinition]
+    type_hints: Dict[str, TypeDefinition]
     origin: str = "local"
     _def: Any
 
-    def reference_nested_custom_types(self) -> List[Definition]:
+    def reference_nested_custom_types(self) -> List[TypeDefinition]:
         referenced = []
         for type_name, _def in self.type_hints.items():
             if _def.type == "LocalClass":
@@ -39,7 +39,7 @@ class LocalClass(Definition):
                 referenced.append(_def)
         return referenced
 
-    def collect_referenced_types(self) -> List[Definition]:
+    def collect_referenced_types(self) -> List[TypeDefinition]:
         referenced = self.reference_nested_custom_types()
         for _, _def in self.type_hints.items():
             referenced.extend(_def.reference_nested_custom_types())
@@ -47,7 +47,7 @@ class LocalClass(Definition):
             referenced.extend(_def.reference_nested_custom_types())
         return referenced
 
-    def flatten(self) -> List[Definition]:
+    def flatten(self) -> List[TypeDefinition]:
         return [self]
 
     def custom_types(self) -> Dict:

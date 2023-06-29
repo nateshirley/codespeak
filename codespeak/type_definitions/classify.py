@@ -2,20 +2,20 @@ import types
 from typing import Any, Callable, Dict, Tuple, get_origin
 from typing import Any, Union, get_args, get_origin, List, get_type_hints
 import inspect
-from codespeak.definitions.free_modules import FREE_MODULES
+from codespeak.type_definitions.free_modules import FREE_MODULES
 import os
 import types
-from codespeak.definitions.definition import Definition
-from codespeak.definitions.types.local_class import LocalClass
-from codespeak.definitions.types.local_class_as_self import LocalClassAsSelf
+from codespeak.type_definitions.type_definition import TypeDefinition
+from codespeak.type_definitions.types.local_class import LocalClass
+from codespeak.type_definitions.types.local_class_as_self import LocalClassAsSelf
 from codespeak.helpers.derive_module_qualname_for_object import (
     derive_module_qualname_for_object,
 )
-from codespeak.definitions.types.installed_class import InstalledClass
-from codespeak.definitions.types.builtin import Builtin
-from codespeak.definitions.types.none import NoneDef
-from codespeak.definitions.types.typing_type import TypingType
-from codespeak.definitions.types.union_type import UnionType
+from codespeak.type_definitions.types.installed_class import InstalledClass
+from codespeak.type_definitions.types.builtin import Builtin
+from codespeak.type_definitions.types.none import NoneDef
+from codespeak.type_definitions.types.typing_type import TypingType
+from codespeak.type_definitions.types.union_type import UnionType
 import pkg_resources
 
 
@@ -80,17 +80,17 @@ def may_have_args(qualname: str):
         return True
 
 
-def from_any_list(_list: List[Any]) -> List[Definition]:
+def from_any_list(_list: List[Any]) -> List[TypeDefinition]:
     return [from_any(_def) for _def in _list]
 
 
-def from_any_tuple(tup: Tuple[Any]) -> List[Definition]:
+def from_any_tuple(tup: Tuple[Any]) -> List[TypeDefinition]:
     return [from_any(_def) for _def in tup]
 
 
 def from_any(
     definition: Any,
-) -> Definition:
+) -> TypeDefinition:
     if definition is None:
         return NoneDef()
     if not hasattr(definition, "__module__"):
@@ -141,7 +141,7 @@ def from_any(
         raise Exception("unsure how to handle definition: ", definition)
 
 
-def from_self_class(self_class: Any, method_name: str) -> Definition:
+def from_self_class(self_class: Any, method_name: str) -> TypeDefinition:
     _def = from_any(self_class)
     if _def.type == "LocalClass":
         return LocalClassAsSelf(
@@ -158,7 +158,7 @@ def from_self_class(self_class: Any, method_name: str) -> Definition:
 
 
 # technically get_type_hints can work on some installed types but we aren't using it for that atm
-def collect_type_hints(_class: type) -> Dict[str, Definition]:
+def collect_type_hints(_class: type) -> Dict[str, TypeDefinition]:
     hints = get_type_hints(_class, include_extras=False)
     definitions = {}
     for name, _def in hints.items():

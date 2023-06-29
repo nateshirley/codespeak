@@ -1,14 +1,14 @@
 from typing import Any, Callable, Dict, List
 from typing import Literal
 
-from codespeak.definitions.types.typing_type import TypingType
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.types.typing_type import TypingType
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
 class UnionType(TypingType):
     qualname: str = "UnionType"
     module: str = "types"
-    args: List[Definition]
+    args: List[TypeDefinition]
     type: Literal["UnionType"] = "UnionType"
 
     def annotate(self) -> Dict:

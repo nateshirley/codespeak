@@ -1,8 +1,8 @@
 from typing import Dict, Literal
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
-class CustomTypeReference(Definition):
+class CustomTypeReference(TypeDefinition):
     type: Literal["ComplexTypeReference"] = "ComplexTypeReference"
 
     def ref(self):
