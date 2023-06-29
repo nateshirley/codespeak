@@ -30,13 +30,14 @@ class Function:
             )
         self.func = func
         self._digest = FunctionDigest.from_inputs(
-            declaration_source_code=self.declaration.source_code,
-            custom_types=self.frame.custom_types(),
+            function_declaration_signature_text=self.declaration.signature_text,
+            function_declaration_docstring=self.declaration.docstring,
+            type_definitions_without_inheritance=self.frame.type_definitions,
         )
 
     @property
     def logic(self) -> Callable:
-        if not self._file_service.does_metadata_exist():
+        if not self._file_service.does_logic_exist():
             raise Exception("No logic found. Execute the function to generate it.")
         return executor.load_generated_logic_from_module_qualname(
             module_qualname=self._file_service.generated_module_qualname,
@@ -124,7 +125,15 @@ class Function:
                 self.declaration.try_add_self_definition(self_type)
 
     def should_infer_new_source_code(self) -> bool:
-        return _should_infer_new_source_code(self._file_service, self._digest)
+        if not self._file_service.does_previous_inference_exist():
+            return True
+        existing_metadata = self._file_service.load_metadata()
+        if existing_metadata is None:
+            return True
+        else:
+            return existing_metadata._should_infer_new_source_code(
+                active_digest=self._digest
+            )
 
     def _infer(self, args: Tuple[Any], kwargs: Dict[str, Any]):
         if self.should_infer_new_source_code():
@@ -139,44 +148,17 @@ class Function:
         else:
             return self.execute_latest_inference(*args, **kwargs)
 
+    @property
+    def _is_testing(self) -> bool:
+        if _settings._settings.is_testing:
+            return (
+                self._file_service.codegen_logic_filepath
+                == _settings._settings.filepath_for_logic_being_tested
+            )
+        else:
+            return False
+
     @staticmethod
     def from_function_object(func: Callable[..., Any]) -> "Function":
         """get classified Function object for an inferred function"""
         return Function(func=func)
-
-
-def _should_infer_new_source_code(
-    file_service: FunctionFileService,
-    active_digest: FunctionDigest,
-    require_deep_hash_match: bool = False,
-) -> bool:
-    if not file_service.does_metadata_exist():
-        return True
-    try:
-        existing_metadata = file_service.load_metadata()
-    except Exception as e:
-        print("unable to load prev metadata")
-        return True
-    if existing_metadata is None:
-        raise Exception("Metadata should exist if the file exists")
-    if existing_metadata.require_execution and not existing_metadata.did_execute:
-        return True
-    if existing_metadata.has_tests and not existing_metadata.did_pass_tests:
-        return True
-    return _has_function_changed(
-        existing_metadata, active_digest, require_deep_hash_match
-    )
-
-
-def _has_function_changed(
-    existing_metadata: FunctionMetadata,
-    active_digest: FunctionDigest,
-    require_deep_hash_match: bool = False,
-):
-    if require_deep_hash_match:
-        return existing_metadata.declaration_digest.deep_hash != active_digest.deep_hash
-    else:
-        return (
-            existing_metadata.declaration_digest.source_hash
-            != active_digest.source_hash
-        )

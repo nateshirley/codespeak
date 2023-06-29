@@ -49,11 +49,11 @@ Here is a json object that contains metadata about custom python types that are 
 
 For installed types, use the qualname and module to recall your existing knowledge of their variables and methods. For local types, use the type hints and source code provided to understand how they could be used.  
 
-Extremely common types, such as those from python's builtin module or the typing module, are intentionally excluded from the object above. Use your existing knowledge of these types to understand them in source code, then import them and use them as needed. 
+Extremely common types, such as those from python's builtin module or the typing module, are intentionally excluded from the object above. Use your existing knowledge of these types to understand them, then import them and use them as needed. 
 
-In your code, provide docstrings, comments, and type hints that an experienced programmer would find helpful, and use comments to note any assumptions that might not be clear from the code. If you would like to raise an exception, wrap it in InferredException.
+In your code, provide type hints that an experienced programmer would find helpful. Use docstrings and comments when helpful. If you would like to raise an exception, wrap it in InferredException.
 
-Respond with the completed version of the python file, delimited by triple-backticks and using a python identifier.
+Respond with only the completed version of the python file, delimited by triple-backticks and using a python identifier. Additional information will be ignored.
 
 Example incomplete file:
 ```python

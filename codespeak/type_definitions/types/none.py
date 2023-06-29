@@ -1,9 +1,9 @@
 from typing import Dict, Literal
 
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
-class NoneDef(Definition):
+class NoneDef(TypeDefinition):
     module: str = "None"
     type: Literal["NoneDef"] = "NoneDef"
     qualname: str = "None"

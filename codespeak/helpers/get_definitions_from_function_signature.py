@@ -1,14 +1,14 @@
 import inspect
 from typing import List, Set
-from codespeak.definitions import classify
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions import classify
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
 def get_definitions_from_function_signature(
     sig: inspect.Signature,
-) -> Set[Definition]:
+) -> Set[TypeDefinition]:
     """Definitions for types used in the signature"""
-    defs: Set[Definition] = set()
+    defs: Set[TypeDefinition] = set()
     params = sig.parameters
     for param in params.values():
         _def = param.annotation

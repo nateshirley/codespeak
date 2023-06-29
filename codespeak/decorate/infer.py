@@ -36,8 +36,9 @@ def infer(func):
                 with Frame.get_manager().manage_for(wrapper):
                     func(*args, **kwargs)
                 function._try_add_self_to_frame(args, kwargs)
-
-            has_executed = True
+                has_executed = True
+            if function._is_testing:
+                return function.execute_latest_inference(*args, **kwargs)
             return function._infer(args, kwargs)
 
     has_executed = False
@@ -74,7 +75,7 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
             wrapper,
             FunctionAttributes.frame,
             Frame(
-                definitions=signature_definitions,
+                type_definitions=signature_definitions,
                 tests=FrameTests(),
                 parents=[Frame.for_module(decorated_func.__module__)],
             ),

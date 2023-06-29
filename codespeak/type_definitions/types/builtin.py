@@ -1,10 +1,10 @@
 import inspect
 from typing import Dict, Literal
 
-from codespeak.definitions.definition import Definition
+from codespeak.type_definitions.type_definition import TypeDefinition
 
 
-class Builtin(Definition):
+class Builtin(TypeDefinition):
     type: Literal["Builtin"] = "Builtin"
 
     def annotate(self) -> Dict:

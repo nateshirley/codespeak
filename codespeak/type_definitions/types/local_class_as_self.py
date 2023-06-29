@@ -1,6 +1,6 @@
 import ast
 from typing import Dict
-from codespeak.definitions.types.local_class import LocalClass
+from codespeak.type_definitions.types.local_class import LocalClass
 
 
 class RemoveFunction(ast.NodeTransformer):

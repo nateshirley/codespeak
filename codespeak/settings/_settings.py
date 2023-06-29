@@ -21,6 +21,8 @@ class _Settings(BaseModel):
     abspath_to_project_root: str | None = None
     openai_model: str = "gpt-4"
     should_auto_clean: bool = False
+    is_testing: bool = False
+    filepath_for_logic_being_tested: str = ""
 
     @staticmethod
     def from_env():
@@ -72,3 +74,9 @@ def get_verbose() -> bool:
 
 def get_environment() -> Environment:
     return _settings.environment
+
+
+def set_is_testing(is_testing: bool, logic_at_filepath: str | None = None):
+    _settings.is_testing = is_testing
+    if logic_at_filepath is not None:
+        _settings.filepath_for_logic_being_tested = logic_at_filepath

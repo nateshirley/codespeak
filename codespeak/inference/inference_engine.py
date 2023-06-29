@@ -12,6 +12,7 @@ from codespeak.public.inferred_exception import InferredException
 from codespeak.executor import execute_unchecked
 from codespeak.inference.results_collector import TestRunner
 from codespeak.test_function import TestFunction
+from codespeak.settings import _settings
 
 
 class ExecutionResponse(BaseModel):
@@ -102,8 +103,10 @@ class InferenceEngine(BaseModel):
     def _try_align_with_tests(self) -> TestResponse:
         if not self.has_tests:
             raise Exception("trying to test without a test func")
-        self._write_test_status(has_tests=False, did_pass_tests=False)
         total_duration = 0
+        _settings.set_is_testing(
+            True, logic_at_filepath=self.file_service.codegen_logic_filepath
+        )
         for test_function in self.test_functions:
             test_result = TestRunner.run_test_func(
                 test_file=test_function.file,
@@ -113,7 +116,8 @@ class InferenceEngine(BaseModel):
             if test_result.exitcode == pytest.ExitCode.OK:
                 continue
             elif test_result.exitcode == pytest.ExitCode.TESTS_FAILED:
-                self._write_test_status(has_tests=False, did_pass_tests=False)
+                _settings.set_is_testing(False)
+                self._write_test_status(has_tests=True, did_pass_tests=False)
                 print("Some tests failed.")
                 if len(test_result.crash_reports) == 0:
                     raise Exception("no crash reports but tests failed")
@@ -127,7 +131,8 @@ class InferenceEngine(BaseModel):
             else:
                 raise exception_for_exitcode(test_result.exitcode)
         print(f"All tests passed successfully in {total_duration}s")
-        self._write_test_status(has_tests=False, did_pass_tests=True)
+        _settings.set_is_testing(False)
+        self._write_test_status(has_tests=True, did_pass_tests=True)
         return TestResponse(did_regenerate_source=False)
 
     def _write_execution_status(self, did_execute: bool) -> None:
