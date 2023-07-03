@@ -24,11 +24,11 @@ result = add_two(1, 3)
 print(result) # output: 4  
 ```
 
-Inferred functions understand your program's goals and generate logic to accomplish them. When inferred functions are called, their generated logic is executed.
+Inferred functions understand your program's goals and write logic to accomplish them. When inferred functions are called, their inferred logic is executed.
 
 ### Use type hints to write reliable, highly-capable functions.
 
-Type hints are an important way that data structures can be made available to inferred functions. Let's look at an example.
+Type hints are an important way that inferred functions receive data structures to use when making inferences. Let's look at an example.
 
 ```python
 from sqlalchemy.orm.session import Session
@@ -41,13 +41,13 @@ def orders_for_user_since_date(session: Session, user: User, since_date: datetim
   """return all of the orders for the user placed after the given date"""
 ```
 
-Relative to the types in `add_two`, this function's types contain much more complex data structures. These data structures give Codespeak the information it needs to make a more advanced inference for the function.
+Although this function requires more advanced logic than `add_two`, it also includes much richer types. These types give the function the context it needs to make a more advanced inference.
 
 To use this function, simply declare it as shown above, then call it.
 
 ### Frames help functions make performant inferences.
 
-A program's types tell us a lot about its goals and abilities. For this reason, Codespeak relies heavily on types to make performant inferences.
+A program's types tell us a lot about its goals and abilities. For this reason, functions rely heavily on types to make performant inferences.
 
 In Codespeak, types are associated with functions via Frames. Every inferred function has a frame, which holds the resources it uses to make inferences.
 
@@ -68,11 +68,7 @@ def fizzbuzz(limit: int) -> None:
 
 ### Use tests to guarantee execution properties on your functions.
 
-Alongside types, tests help Codespeak make more advanced inferences.
-
-When inferring functions with tests, Codespeak will execute the function's tests and use the results to make new inferences until the tests pass.
-
-Tests are attached to a function via the function's Frame.
+Alongside types, tests help functions make more advanced inferences. To use tests, attach them to a function via its Frame.
 
 ```python
 from codespeak import infer
@@ -87,11 +83,15 @@ def add_two(x: int, y: int) -> int:
   frame.add_test_function(test_add_two)
 ```
 
+When a function with tests is making a new inference, it will execute its tests and rewrite its implementation until the tests pass.
+
 Currently, Frames receive and execute tests in the form of pytest functions.
 
-### Programmatically add resources to your functions' Frames.
+### Expand your Frames by programmatically giving them resources
 
-Below, we have another sample function that will perform as intended. The function's frame has access to `Order` and `User`, so it will use the `latest_order_id` variable on `User` to understand the orders table and locate the appropriate order.
+You might also choose to programmatically manipulate frames in order to give a function types that aren't used in its declaration.
+
+Below, you'll see a `get_latest_order_for_user` function that gets the latest order object associated with a `User`. Because the function's declaration includes `Order` and `User`, both types are natively included in its Frame. 
 
 ```py
 ...
@@ -109,7 +109,9 @@ def get_latest_order_for_user(session: Session, user: User) -> Order:
   """Find the latest order for the user and return it"""
 ```
 
-However, sometimes you'll need to *programmatically* add resources to a function's frame. For the function above—instead of returning the latest `Order`—let's say we want to return only the latest order's total price.
+For the inference above, the function will use the `latest_order_id` variable on `User` to understand the orders table and write logic that locates the appropriate order.
+
+However, sometimes you'll need to add additional resources to a function's frame. Instead of returning the latest `Order`, let's say we want to return only the latest order's total price:
 
 ```python
 @infer
@@ -117,7 +119,7 @@ def get_latest_order_total_price_for_user(session: Session, user: User) -> int:
   """Find the latest order for the user and return the total price paid"""
 ```
 
-Now, the function's frame doesn't have access to the `Order` class, so the inference engine won't understand how to find the appropriate order. To fix this, add `Order` to the Function's frame.
+Now, the function's frame doesn't have access to the `Order` class, so it won't understand how to find the appropriate order. To fix this, add `Order` to the function's frame.
 
 ```python
 from codespeak import infer, Frame
@@ -130,9 +132,11 @@ def get_latest_order_total_for_user(session: Session, user: User) -> int:
   frame.add_type(Order)
 ```
 
+Frames highlight an important property of Codespeak—infererred functions are easy to edit and reproduce, because their source material is declared concretely in your project.
+
 ### Share resources across many functions with module-level Frames.
 
-The types included in a Frame act as an inventory of resources for a function to use when inferring logic—they're not an instruction set. It's perfectly fine for a function to have types in its frame that aren't relevant—Codespeak will simply ignore them.
+Frames hold an inventory of resources that functions use when inferring logic. It's perfectly fine for a function to have types in its frame that aren't relevant to its goals—Codespeak will simply ignore them.
 
 In some cases, one may choose to build a single set of resources and share it across several functions. For these cases, Codespeak offers module-level Frames.
 
@@ -147,7 +151,7 @@ module_frame = Frame.for_module(__name__)
 module_frame.add_type(Order)
 ```
 
-A module's frame is a parent to the Frames for each function in the module. Any resources added to a module's frame are available to every function in the module.
+A module's frame is a parent to the Frames of each function in the module. Any resources added to a module's frame are available to every function in the module.
 
 ### Easily check and edit inferences in your filesystem.
 
@@ -157,9 +161,9 @@ Each function inference is written to its own file, named after the function. To
 
 ### Maintain near-zero overhead in production.
 
-The first time an inferred function is called, Codespeak makes an inference for it. From then on, functions get new inferences whenever their declarations or their resources change. Otherwise, the function's previously generated inference is loaded and executed in real-time.
+The first time an inferred function is called, it writes its own logic and executes it. From then on, functions make new inferences whenever their declarations or their resources change. Otherwise, the function's previously generated inference is loaded and executed in real-time.
 
-In production environments, Codespeak assumes all functions are unchanged and executes them with near-zero overhead—on an M2 Macbook Air, you would need to call a Codespeak function about 13 million times to generate 1 second of execution latency.
+In production environments, Codespeak assumes all functions are unchanged and executes them with near-zero overhead—on an M2 Macbook Air, you would need to call an inferred function about 13 million times to generate 1 second of execution latency.
 
 To configure production settings, use an environment variable `ENVIRONMENT=PROD` or call `codespeak.set_environment("prod")`
 
