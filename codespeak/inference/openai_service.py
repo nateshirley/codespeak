@@ -44,7 +44,7 @@ class OpenAIService(BaseModel):
             messages=[
                 Message(
                     role=Roles.system(),
-                    content="You are a competent and diligent python programmer. You write python code.",
+                    content="You are a competent and diligent python programmer. You write and communicate in python code.",
                 ),
             ],
             num_retries=0,

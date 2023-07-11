@@ -21,8 +21,6 @@ from codespeak.helpers.get_definitions_from_function_signature import (
     get_definitions_from_function_signature,
 )
 
-# type inference remain on original function when no type hints are on the decorator
-
 
 def infer(func):
     @wraps(func)
@@ -35,7 +33,6 @@ def infer(func):
             if not has_executed:
                 with Frame.get_manager().manage_for(wrapper):
                     func(*args, **kwargs)
-                function._try_add_self_to_frame(args, kwargs)
                 has_executed = True
             if function._is_testing:
                 return function.execute_latest_inference(*args, **kwargs)
@@ -61,14 +58,15 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
     elif env == _settings.Environment.DEV:
         file_service = FunctionFileService.from_decorated_func(decorated_func)
         setattr(wrapper, FunctionAttributes.file_service, file_service)
-        signature_definitions = get_definitions_from_function_signature(
-            inspect.signature(decorated_func)
-        )
+        sig = inspect.signature(decorated_func)
+        signature_definitions = get_definitions_from_function_signature(sig)
         setattr(
             wrapper,
             FunctionAttributes.declaration,
-            FunctionDeclaration.from_inferred_func(
-                decorated_func, signature_definitions
+            FunctionDeclaration.from_inferred_func_declaration(
+                inferred_func=decorated_func,
+                signature_definitions=signature_definitions,
+                params=sig.parameters,
             ),
         )
         setattr(

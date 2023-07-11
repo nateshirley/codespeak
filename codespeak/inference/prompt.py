@@ -53,7 +53,7 @@ Extremely common types, such as those from python's builtin module or the typing
 
 In your code, provide type hints that an experienced programmer would find helpful. Use docstrings and comments when helpful. If you would like to raise an exception, wrap it in InferredException.
 
-Respond with only the completed version of the python file, delimited by triple-backticks and using a python identifier. Additional information will be ignored.
+Respond with only the completed version of the python file, delimited by triple-backticks and using a python identifier. Additional context outside of the code will be ignored.
 
 Example incomplete file:
 ```python

@@ -12,7 +12,7 @@ def set_verbose(verbose: bool):
 
 
 def set_auto_clean(auto_clean: bool):
-    _settings.auto_clean = auto_clean
+    _settings.should_auto_clean = auto_clean
 
 
 def set_openai_model(model: str):
