@@ -73,7 +73,6 @@ class Function:
         """Explicitly make a new inference for a function. If using a method, must pass args to attach self type."""
         args = args or []
         kwargs = kwargs or {}
-        self._try_add_self_to_frame(tuple(args), kwargs)
         return self._make_inference(
             args=args,
             kwargs=kwargs,
@@ -117,12 +116,6 @@ class Function:
             "custom_types": self.frame.custom_types(),
         }
         return json.dumps(inputs, indent=4)
-
-    def _try_add_self_to_frame(self, args: Tuple[Any], kwargs: Dict[str, Any]):
-        if self.declaration.self_definition is None:
-            self_type = self_type_if_exists(self.func, args, kwargs)
-            if self_type is not None:
-                self.declaration.try_add_self_definition(self_type)
 
     def should_infer_new_source_code(self) -> bool:
         if not self._file_service.does_previous_inference_exist():

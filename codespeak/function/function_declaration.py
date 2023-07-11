@@ -3,10 +3,14 @@ import inspect
 import json
 import re
 import textwrap
+from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel
 from codespeak.type_definitions import classify
 from codespeak.type_definitions.type_definition import TypeDefinition
+from codespeak.helpers.try_get_self_class_object_for_function import (
+    try_get_self_class_object_for_function,
+)
 
 
 class FunctionDeclaration(BaseModel):
@@ -36,9 +40,7 @@ class FunctionDeclaration(BaseModel):
             _str += f"from {module} import {', '.join([_type.qualname for _type in types])}\n"
         return _str
 
-    def try_add_self_definition(self, self_definition: TypeDefinition) -> None:
-        if self.self_definition is not None:
-            return
+    def set_self_definition(self, self_definition: TypeDefinition) -> None:
         self.self_definition = self_definition
         self.add_import_definition(self_definition)
 
@@ -65,9 +67,10 @@ class FunctionDeclaration(BaseModel):
             self.import_definitions[definition.module] = defs_
 
     @staticmethod
-    def from_inferred_func(
+    def from_inferred_func_declaration(
         inferred_func: Callable,
         signature_definitions: Set[TypeDefinition],
+        params: MappingProxyType[str, inspect.Parameter],
     ) -> "FunctionDeclaration":
         source_code = textwrap.dedent(inspect.getsource(inferred_func))
 
@@ -87,6 +90,12 @@ class FunctionDeclaration(BaseModel):
         flat_sig_defs = flatten_signature_definitions(signature_definitions)
         for _def in flat_sig_defs:
             declaration.add_import_definition(_def)
+
+        self_cls = try_get_self_class_object_for_function(
+            function=inferred_func, params=params
+        )
+        if self_cls:
+            declaration.set_self_definition(classify.from_any(self_cls))
 
         return declaration
 

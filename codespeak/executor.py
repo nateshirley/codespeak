@@ -1,6 +1,5 @@
 from importlib import import_module
 from typing import Any, Callable
-from codespeak.public.inferred_exception import InferredException
 
 
 def load_generated_logic_from_module_qualname(
@@ -10,9 +9,9 @@ def load_generated_logic_from_module_qualname(
         module = import_module(module_qualname)
     except Exception as e:
         raise Exception(f"Could not import module path at {module_qualname}. e: {e}")
-    try:
+    if hasattr(module, func_name):
         return getattr(module, func_name)
-    except AttributeError:
+    else:
         raise Exception(
             f"Could not find function {func_name} on module {module_qualname}"
         )
