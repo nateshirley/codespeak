@@ -10,14 +10,20 @@ class InferredException(Exception):
         super().__init__(str(exception))
 
 
-def annotate() -> Dict:
-    qualname = InferredException.__qualname__
-    module = InferredException.__module__
-    source_code = inspect.getsource(InferredException)
-    return {
-        f"{module}.{qualname}": {
-            "module": module,
-            "qualname": qualname,
-            "source_code": source_code,
+class InferredExceptionHelpers:
+    @staticmethod
+    def annotate() -> Dict:
+        qualname = "InferredException"
+        module = "codespeak"
+        source_code = inspect.getsource(InferredException)
+        return {
+            f"{module}.{qualname}": {
+                "module": module,
+                "qualname": qualname,
+                "source_code": source_code,
+            }
         }
-    }
+
+    @staticmethod
+    def import_text() -> str:
+        return f"from codespeak import InferredException\n"

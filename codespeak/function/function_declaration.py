@@ -6,6 +6,7 @@ import textwrap
 from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel
+from codespeak.public.inferred_exception import InferredExceptionHelpers
 from codespeak.type_definitions import classify
 from codespeak.type_definitions.type_definition import TypeDefinition
 from codespeak.helpers.try_get_self_class_object_for_function import (
@@ -38,6 +39,7 @@ class FunctionDeclaration(BaseModel):
             if module == "builtins" or module == "None":
                 continue
             _str += f"from {module} import {', '.join([_type.qualname for _type in types])}\n"
+        _str += InferredExceptionHelpers.import_text()
         return _str
 
     def set_self_definition(self, self_definition: TypeDefinition) -> None:

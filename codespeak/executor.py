@@ -22,3 +22,16 @@ def execute_unchecked(codegen_module_qualname: str, func_name: str, *args, **kwa
         codegen_module_qualname, func_name=func_name
     )
     return logic(*args, **kwargs)
+
+
+# def execute_safe(logic: Callable, *args, **kwargs) -> Any:
+#     try:
+#         result = logic(*args, **kwargs)
+#         return result
+#     except Exception as e:
+# could put telemetry here to track how often we're not properly wrapping exceptions, leaving for now
+#         if isinstance(e, GeneratedException):
+#             raise e.exception
+#         else:
+#             print("--UNSAFE EXCEPTION-- not wrapped in GeneratedException")
+#             raise e
