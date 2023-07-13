@@ -19,14 +19,28 @@ def set_openai_model(model: str):
     _settings.openai_model = model
 
 
+# set integration api key, or something like that
+def add_api(name: str, key: str):
+    api_name = name.lower()
+    if api_name == "openai":
+        set_openai_api_key(key)
+    elif api_name == "harmonic":
+        _settings.api_keys["harmonic"] = key
+
+
 def manually_set_abspath_to_project_root(abspath: str):
     _settings.abspath_to_project_root = abspath
+
+
+def set_interactive_mode(should_use_interactive_mode: bool):
+    _settings.is_interactive_mode = should_use_interactive_mode
 
 
 def set_environment(env: Environment | str):
     if isinstance(env, Environment):
         _settings.environment = env
     else:
+        env = env.lower()
         if env not in [e.value for e in Environment]:
             raise Exception("Environment doesn't exist, use 'prod' or 'dev'")
         _settings.environment = Environment(env)

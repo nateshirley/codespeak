@@ -17,8 +17,8 @@ from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.frame_tests import FrameTests
 from codespeak.frame import Frame
-from codespeak.helpers.get_definitions_from_function_signature import (
-    get_definitions_from_function_signature,
+from codespeak.helpers.get_definitions_from_function_object import (
+    get_definitions_from_function_object,
 )
 
 
@@ -58,22 +58,21 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
     elif env == _settings.Environment.DEV:
         file_service = FunctionFileService.from_decorated_func(decorated_func)
         setattr(wrapper, FunctionAttributes.file_service, file_service)
-        sig = inspect.signature(decorated_func)
-        signature_definitions = get_definitions_from_function_signature(sig)
+        function_definitions = get_definitions_from_function_object(decorated_func)
         setattr(
             wrapper,
             FunctionAttributes.declaration,
             FunctionDeclaration.from_inferred_func_declaration(
                 inferred_func=decorated_func,
-                signature_definitions=signature_definitions,
-                params=sig.parameters,
+                all_type_definitions=function_definitions["all"],
+                self_definition=function_definitions["self"],
             ),
         )
         setattr(
             wrapper,
             FunctionAttributes.frame,
             Frame(
-                type_definitions=signature_definitions,
+                type_definitions=function_definitions["all"],
                 tests=FrameTests(),
                 parents=[Frame.for_module(decorated_func.__module__)],
             ),

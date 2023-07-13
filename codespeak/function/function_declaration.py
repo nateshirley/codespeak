@@ -8,10 +8,8 @@ from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel
 from codespeak.public.inferred_exception import InferredExceptionHelpers
 from codespeak.type_definitions import classify
+from codespeak.type_definitions.import_definition import ImportDefinition
 from codespeak.type_definitions.type_definition import TypeDefinition
-from codespeak.helpers.try_get_self_class_object_for_function import (
-    try_get_self_class_object_for_function,
-)
 
 
 class FunctionDeclaration(BaseModel):
@@ -23,14 +21,14 @@ class FunctionDeclaration(BaseModel):
     docstring: str
     source_code: str
     signature_text: str
-    import_definitions: Dict[str, Set[TypeDefinition]]
+    import_definitions: Dict[str, Set[ImportDefinition]]
     self_definition: TypeDefinition | None = None
 
     def as_incomplete_file(self) -> str:
-        signature_text = self.signature_text
-        if self.self_definition is not None:
-            signature_text = self.get_signature_text_with_self_definition()
-        return self.imports_text() + "\n" + signature_text + "\n"
+        return self.imports_text() + "\n" + self.signature_text + "\n"
+
+    def as_query_document(self) -> str:
+        return self.signature_text
 
     # potentially buggy
     def imports_text(self) -> str:
@@ -42,27 +40,7 @@ class FunctionDeclaration(BaseModel):
         _str += InferredExceptionHelpers.import_text()
         return _str
 
-    def set_self_definition(self, self_definition: TypeDefinition) -> None:
-        self.self_definition = self_definition
-        self.add_import_definition(self_definition)
-
-    def get_signature_text_with_self_definition(self) -> str:
-        if self.self_definition is None:
-            raise Exception("self_definition is None")
-
-        def text_with_type_name_after_self(signature_text, self_type_name):
-            def replace(match):
-                return match.group() + ":" + self_type_name
-
-            pattern = r"\(self"
-            new_text = re.sub(pattern, replace, signature_text, count=1)
-            return new_text
-
-        return text_with_type_name_after_self(
-            self.signature_text, self.self_definition.qualname
-        )
-
-    def add_import_definition(self, definition: TypeDefinition):
+    def add_import_definition(self, definition: ImportDefinition):
         defs_ = self.import_definitions.get(definition.module, set())
         if not definition in defs_:
             defs_.add(definition)
@@ -71,8 +49,8 @@ class FunctionDeclaration(BaseModel):
     @staticmethod
     def from_inferred_func_declaration(
         inferred_func: Callable,
-        signature_definitions: Set[TypeDefinition],
-        params: MappingProxyType[str, inspect.Parameter],
+        all_type_definitions: Set[TypeDefinition],
+        self_definition: TypeDefinition | None,
     ) -> "FunctionDeclaration":
         source_code = textwrap.dedent(inspect.getsource(inferred_func))
 
@@ -85,37 +63,56 @@ class FunctionDeclaration(BaseModel):
             signature_text=build_signature_text(
                 func_name=inferred_func.__name__,
                 source_code=source_code,
+                self_definition_qualname=self_definition.qualname
+                if self_definition
+                else None,
             ),
+            self_definition=self_definition,
             import_definitions={},
         )
 
-        flat_sig_defs = flatten_signature_definitions(signature_definitions)
-        for _def in flat_sig_defs:
+        flat_import_defs = flatten_type_definitions(all_type_definitions)
+        for _def in flat_import_defs:
             declaration.add_import_definition(_def)
-
-        self_cls = try_get_self_class_object_for_function(
-            function=inferred_func, params=params
-        )
-        if self_cls:
-            declaration.set_self_definition(classify.from_any(self_cls))
 
         return declaration
 
 
-def flatten_signature_definitions(
-    signature_definitions: Set[TypeDefinition],
-) -> Set[TypeDefinition]:
-    flattened = set()
-    for _def in signature_definitions:
+def flatten_type_definitions(
+    definitions: Set[TypeDefinition],
+) -> Set[ImportDefinition]:
+    flattened: Set[ImportDefinition] = set()
+    for _def in definitions:
         if _def.type == "LocalClass":
-            flattened.add(_def)
+            flattened.add(ImportDefinition.from_type_definition(_def))
         else:
-            flattened.update(_def.flatten())
+            flat_type_defs = _def.flatten()
+            flat_import_defs = [
+                ImportDefinition.from_type_definition(_def) for _def in flat_type_defs
+            ]
+            flattened.update(flat_import_defs)
     return flattened
 
 
-def build_signature_text(func_name: str, source_code: str) -> str:
+def signature_text_with_self_definition(
+    signature_text: str, self_definition_qualname: str
+) -> str:
+    def text_with_type_name_after_self(signature_text, self_type_name):
+        def replace(match):
+            return match.group() + ":" + self_type_name
+
+        pattern = r"\(self"
+        new_text = re.sub(pattern, replace, signature_text, count=1)
+        return new_text
+
+    return text_with_type_name_after_self(signature_text, self_definition_qualname)
+
+
+def build_signature_text(
+    func_name: str, source_code: str, self_definition_qualname: str | None
+) -> str:
     module = ast.parse(source_code)
+    signature: str | None = None
     for node in module.body:
         if isinstance(node, ast.FunctionDef) and node.name == func_name:
             # Reconstruct the function signature from the 'args' attribute
@@ -123,5 +120,11 @@ def build_signature_text(func_name: str, source_code: str) -> str:
             if node.returns:  # If there's a return annotation, add it
                 signature += f" -> {ast.unparse(node.returns)}"
             signature += ":"
-            return signature
-    raise Exception("function signature not found")
+            break
+    if signature is None:
+        raise Exception("function signature not found")
+    if self_definition_qualname is not None:
+        signature = signature_text_with_self_definition(
+            signature_text=signature, self_definition_qualname=self_definition_qualname
+        )
+    return signature

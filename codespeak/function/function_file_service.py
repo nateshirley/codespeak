@@ -9,7 +9,11 @@ from pydantic import BaseModel
 from codespeak.settings import _settings
 from codespeak.function.function_metadata import FunctionMetadata
 from codespeak.function.function_digest import FunctionDigest
-from codespeak.constants import metadata_file_prefix, codegen_dirname
+from codespeak.constants import (
+    metadata_file_prefix,
+    codespeak_dirname,
+    inferences_dirname,
+)
 from codespeak.helpers.derive_module_qualname_for_object import (
     derive_module_qualname_for_object,
 )
@@ -93,7 +97,7 @@ class FunctionFileService(BaseModel):
                 declared_module_qualname=declared_module_qualname,
                 inferred_func_qualname=func.__qualname__,
             ),
-            codegen_absolute_dirpath=f"{abspath_to_proj}/{codegen_dirname}/{declared_module_as_filepath}",
+            codegen_absolute_dirpath=f"{abspath_to_proj}/{codespeak_dirname}/{inferences_dirname}/{declared_module_as_filepath}",
         )
 
     def does_previous_inference_exist(self) -> bool:
@@ -125,7 +129,7 @@ class FunctionFileService(BaseModel):
 def build_generated_module_qualname(
     declared_module_qualname: str, inferred_func_qualname: str
 ):
-    return f"{codegen_dirname}.{declared_module_qualname}.{inferred_func_qualname_to_filesystem_name(inferred_func_qualname)}"
+    return f"{codespeak_dirname}.{inferences_dirname}.{declared_module_qualname}.{inferred_func_qualname_to_filesystem_name(inferred_func_qualname)}"
 
 
 def inferred_func_qualname_to_filesystem_name(qualname: str) -> str:

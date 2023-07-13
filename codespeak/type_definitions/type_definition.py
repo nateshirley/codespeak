@@ -9,15 +9,23 @@ from typing import Literal
 class TypeDefinition(ABC, BaseModel):
     qualname: str
     module: str
+    args: List["TypeDefinition"] = []
     type: Literal["TypeDefinition"] = "TypeDefinition"
     _def: Any
 
     def __hash__(self):
-        return hash((self.module, self.qualname))
+        arg_paths = [arg.import_path() for arg in self.args]
+        return hash((self.module, self.qualname, str(arg_paths)))
 
     def __eq__(self, other):
         if isinstance(other, TypeDefinition):
-            return (self.module, self.qualname) == (other.module, other.qualname)
+            self_arg_paths = [arg.import_path() for arg in self.args]
+            other_arg_paths = [arg.import_path() for arg in other.args]
+            return (self.module, self.qualname, str(self_arg_paths)) == (
+                other.module,
+                other.qualname,
+                str(other_arg_paths),
+            )
         return False
 
     def __lt__(self, other):
