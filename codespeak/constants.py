@@ -1,3 +1,4 @@
 # codespeak/inferences (is what it should be)
-codegen_dirname = "codespeak_inferences"
+codespeak_dirname = "_codespeak"
+inferences_dirname = "inferences"
 metadata_file_prefix = "_metadata_"

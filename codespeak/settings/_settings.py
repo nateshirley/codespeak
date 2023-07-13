@@ -1,9 +1,13 @@
 from enum import Enum
 import os
-from typing import Callable
+from typing import Callable, TypedDict
 from pydantic import BaseModel
 from codespeak.settings.environment import Environment
-from codespeak.constants import codegen_dirname
+from codespeak.constants import codespeak_dirname, inferences_dirname
+
+
+class ApiKeys(TypedDict):
+    harmonic: str | None
 
 
 class _Settings(BaseModel):
@@ -21,12 +25,14 @@ class _Settings(BaseModel):
     abspath_to_project_root: str | None = None
     openai_model: str = "gpt-4"
     should_auto_clean: bool = False
+    is_interactive_mode: bool = False
     is_testing: bool = False
     filepath_for_logic_being_tested: str = ""
+    api_keys: ApiKeys = ApiKeys(harmonic=None)
 
     @staticmethod
     def from_env():
-        env = os.getenv("ENVIRONMENT")
+        env = os.getenv("ENV")
         if env is not None:
             env = env.lower()
             if env in [e.value for e in Environment]:
@@ -42,8 +48,14 @@ class _Settings(BaseModel):
 _settings = _Settings.from_env()
 
 
-def abspath_to_codegen_dir() -> str:
-    return f"{_settings.abspath_to_project_root}/{codegen_dirname}"
+def abspath_to_inferences_dir() -> str:
+    return (
+        f"{_settings.abspath_to_project_root}/{codespeak_dirname}/{inferences_dirname}"
+    )
+
+
+def is_interactive_mode() -> bool:
+    return _settings.is_interactive_mode
 
 
 def should_auto_clean() -> bool:
@@ -52,6 +64,10 @@ def should_auto_clean() -> bool:
 
 def get_openai_model() -> str:
     return _settings.openai_model
+
+
+def get_api_keys() -> ApiKeys:
+    return _settings.api_keys
 
 
 def set_abspath_to_project_root(abspath: str):

@@ -1,5 +1,6 @@
 import json
 import re
+from typing import List
 from pydantic import BaseModel
 from codespeak.frame import Frame
 from codespeak.function.function_declaration import FunctionDeclaration
@@ -7,6 +8,9 @@ from codespeak.inference import prompt
 from codespeak.inference.openai_service import OpenAIService, Roles
 from codespeak.inference.results_collector import CrashReport
 from codespeak.settings._settings import get_verbose
+from codespeak.settings import _settings
+from codespeak.interactive_mode.get_approval import get_approval
+import requests
 
 
 class IterationState(BaseModel):
@@ -38,10 +42,14 @@ class CodespeakService(BaseModel):
     def generate_source_code(self) -> str:
         custom_types = {"custom_types": self.frame.custom_types()}
         custom_types_str = json.dumps(custom_types, indent=4)
+        api_schemas = self.fetch_relevant_api_schemas(
+            document=self.function_declaration.as_query_document()
+        )
         _prompt = prompt.make_prompt(
             incomplete_file=self.function_declaration.as_incomplete_file(),
             custom_types_str=custom_types_str,
             declaration_docstring=self.function_declaration.docstring,
+            api_schemas=api_schemas,
             verbose=get_verbose(),
         )
         return self._fetch_new_source_code(prompt=_prompt)
@@ -52,6 +60,8 @@ class CodespeakService(BaseModel):
             if not "InferredException" in response:
                 print("possible manual exception will cause regen in future")
         source_code = self._guarantee_source_formatting(response)
+        if _settings.is_interactive_mode():
+            get_approval()
         return source_code
 
     def try_regenerate_from_execution_failure(
@@ -132,3 +142,26 @@ class CodespeakService(BaseModel):
         msg += "\n```\n\n"
         msg += "Use the test's source code to further understand the intended design of the incomplete function, and reference the information in my original message to try again to complete the original task. Be sure to think about the root cause of the test failure and adjust your response to better align with the intent of the incomplete function."
         return msg
+
+    @staticmethod
+    def fetch_relevant_api_schemas(document: str) -> List[dict] | None:
+        api_keys = _settings.get_api_keys()
+        harmonic_api_key = api_keys.get("harmonic", None)
+        if harmonic_api_key is None:
+            return None
+        url = "http://localhost:8000"
+        # url = "codespeak-api-production.up.railway.app"
+        path = "/query"
+        data = {
+            "document": document,
+            "n_results": 1,
+            "api": "harmonic",
+        }
+        response = requests.post(f"{url}{path}", json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(
+                "couldn't get api schema from codespeak api: ",
+                response.text,
+            )

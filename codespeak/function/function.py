@@ -136,7 +136,7 @@ class Function:
                 should_execute=True,
             )
             if _settings.should_auto_clean():
-                clean(_settings.abspath_to_codegen_dir())
+                clean(_settings.abspath_to_inferences_dir())
             return inference.execution_result
         else:
             return self.execute_latest_inference(*args, **kwargs)

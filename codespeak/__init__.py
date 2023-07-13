@@ -8,6 +8,7 @@ from .public.settings import (
     set_openai_model,
     manually_set_abspath_to_project_root,
     set_environment,
+    add_api,
 )
 from .public.example_return import example
 from .public.inferred_exception import InferredException
