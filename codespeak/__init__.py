@@ -9,6 +9,7 @@ from .public.settings import (
     manually_set_abspath_to_project_root,
     set_environment,
     add_api,
+    set_interactive_mode,
 )
 from .public.example_return import example
 from .public.inferred_exception import InferredException
