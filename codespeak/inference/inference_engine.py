@@ -13,6 +13,7 @@ from codespeak.executor import execute_unchecked
 from codespeak.inference.results_collector import TestRunner
 from codespeak.test_function import TestFunction
 from codespeak.settings import _settings
+from codespeak.interactive_mode.get_approval import get_approval
 
 
 class ExecutionResponse(BaseModel):
@@ -64,6 +65,8 @@ class InferenceEngine(BaseModel):
             did_pass_tests=False,
             digest=self.digest,
         )
+        if _settings.is_interactive_mode():
+            get_approval()
         if self.should_execute:
             execution_response = self._try_align_with_execution()
             execution_result = execution_response.result
@@ -80,6 +83,7 @@ class InferenceEngine(BaseModel):
             result = execute_unchecked(
                 self.file_service.generated_module_qualname,
                 self.file_service.generated_entrypoint,
+                self.codespeak_service.already_tried_execution,
                 *self.args,
                 **self.kwargs,
             )

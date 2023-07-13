@@ -1,12 +1,15 @@
 from importlib import import_module
+import importlib
 from typing import Any, Callable
 
 
 def load_generated_logic_from_module_qualname(
-    module_qualname: str, func_name: str
+    module_qualname: str, func_name: str, should_reload: bool = False
 ) -> Callable:
     try:
         module = import_module(module_qualname)
+        if should_reload:
+            importlib.reload(module)
     except Exception as e:
         raise Exception(f"Could not import module path at {module_qualname}. e: {e}")
     if hasattr(module, func_name):
@@ -17,9 +20,12 @@ def load_generated_logic_from_module_qualname(
         )
 
 
-def execute_unchecked(codegen_module_qualname: str, func_name: str, *args, **kwargs):
+def execute_unchecked(
+    codegen_module_qualname: str, func_name: str, should_reload: bool, *args, **kwargs
+):
+    print("should_reload: ", should_reload)
     logic = load_generated_logic_from_module_qualname(
-        codegen_module_qualname, func_name=func_name
+        codegen_module_qualname, func_name=func_name, should_reload=should_reload
     )
     return logic(*args, **kwargs)
 

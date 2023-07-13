@@ -9,7 +9,6 @@ from codespeak.inference.openai_service import OpenAIService, Roles
 from codespeak.inference.results_collector import CrashReport
 from codespeak.settings._settings import get_verbose
 from codespeak.settings import _settings
-from codespeak.interactive_mode.get_approval import get_approval
 import requests
 
 
@@ -60,9 +59,11 @@ class CodespeakService(BaseModel):
             if not "InferredException" in response:
                 print("possible manual exception will cause regen in future")
         source_code = self._guarantee_source_formatting(response)
-        if _settings.is_interactive_mode():
-            get_approval()
         return source_code
+
+    @property
+    def already_tried_execution(self) -> bool:
+        return self.iterations.num_code_versions > 0
 
     def try_regenerate_from_execution_failure(
         self,
