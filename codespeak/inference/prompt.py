@@ -87,6 +87,8 @@ def api_schemas_portion(api_schemas: List[dict] | None) -> str:
         Here is a list of openapi schemas that are likely relevant to the python file. Use the schemas to understand the associated apis and call them as needed in your completed file:
         {str(api_schemas)}
 
-        Remember, you can follow the $ref links in a schema to get more information about the types in its api.
+        Remember, you can follow the $ref links in a schema to get more information about the types in its api. When accessing data from an api response, pay careful attention to the properties in its schema to find the data you're looking for.  
+
+        Also, if the incomplete file has a custom return type, be sure to match the paths in the schema with the properties from the custom type.
         """
     )

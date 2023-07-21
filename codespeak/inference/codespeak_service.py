@@ -3,7 +3,8 @@ import re
 from typing import List
 from pydantic import BaseModel
 from codespeak.frame import Frame
-from codespeak.function.function_declaration import FunctionDeclaration
+from codespeak.function.function_declaration_lite import FunctionDeclarationLite
+from codespeak.function.function_lite import FunctionLite
 from codespeak.inference import prompt
 from codespeak.inference.openai_service import OpenAIService, Roles
 from codespeak.inference.results_collector import CrashReport
@@ -21,40 +22,41 @@ class IterationState(BaseModel):
     max_bad_formatting_versions: int = 3
 
 
+url = "http://localhost:8000"
+# url = "codespeak-api-production.up.railway.app"
+
+
 class CodespeakService(BaseModel):
     openai_service: OpenAIService
     iterations: IterationState
-    function_declaration: FunctionDeclaration
-    frame: Frame
+    function_lite: FunctionLite
 
     @staticmethod
-    def with_defaults(
-        function_declaration: FunctionDeclaration, frame: Frame
-    ) -> "CodespeakService":
+    def with_defaults(function_lite: FunctionLite) -> "CodespeakService":
         return CodespeakService(
             openai_service=OpenAIService.with_defaults(),
             iterations=IterationState(),
-            function_declaration=function_declaration,
-            frame=frame,
+            function_lite=function_lite,
         )
 
     def generate_source_code(self) -> str:
-        custom_types = {"custom_types": self.frame.custom_types()}
+        custom_types = {"custom_types": self.function_lite.custom_types}
         custom_types_str = json.dumps(custom_types, indent=4)
         api_schemas = self.fetch_relevant_api_schemas(
-            document=self.function_declaration.as_query_document()
+            document=self.function_lite.declaration.query_document
         )
         _prompt = prompt.make_prompt(
-            incomplete_file=self.function_declaration.as_incomplete_file(),
+            incomplete_file=self.function_lite.declaration.incomplete_file,
             custom_types_str=custom_types_str,
-            declaration_docstring=self.function_declaration.docstring,
+            declaration_docstring=self.function_lite.declaration.docstring,
             api_schemas=api_schemas,
             verbose=get_verbose(),
         )
         return self._fetch_new_source_code(prompt=_prompt)
 
     def _fetch_new_source_code(self, prompt: str) -> str:
-        response = self.openai_service.send_user_message(content=prompt)
+        self.openai_service.send_user_message(content=prompt)
+        response = self.openai_service.latest_message_content
         if " raise" in response:
             if not "InferredException" in response:
                 print("possible manual exception will cause regen in future")
@@ -72,7 +74,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_code_versions < self.iterations.max_code_versions:
             print(
                 "regenerating for func: ",
-                self.function_declaration.qualname,
+                self.function_lite.declaration.qualname,
                 " num attempt: ",
                 self.iterations.num_code_versions + 1,
             )
@@ -83,7 +85,7 @@ class CodespeakService(BaseModel):
             )
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.function_declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.function_lite.declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def try_regenerate_from_test_failure(
@@ -92,7 +94,7 @@ class CodespeakService(BaseModel):
         if self.iterations.num_test_versions < self.iterations.max_test_versions:
             print(
                 "regenerating after failed tests for func: ",
-                self.function_declaration.qualname,
+                self.function_lite.declaration.qualname,
                 " num attempt: ",
                 self.iterations.num_test_versions + 1,
             )
@@ -104,7 +106,7 @@ class CodespeakService(BaseModel):
             return self._fetch_new_source_code(prompt=prompt)
         else:
             raise Exception(
-                f"Unable to generate code that executes with the given arguments for {self.function_declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
+                f"Unable to generate code that executes with the given arguments for {self.function_lite.declaration.qualname}. Make sure your arguments are of the correct type, clarify your types, or modify your docstring."
             )
 
     def _guarantee_source_formatting(self, response: str) -> str:
@@ -119,11 +121,13 @@ class CodespeakService(BaseModel):
                 self.iterations.num_bad_formatting_versions
                 < self.iterations.max_bad_formatting_versions
             ):
-                resp = self.openai_service.send_user_message(
+                self.openai_service.send_user_message(
                     content="Your response should start with ```python and end with ```. Try again."
                 )
                 self.iterations.num_bad_formatting_versions += 1
-                return self._guarantee_source_formatting(resp)
+                return self._guarantee_source_formatting(
+                    self.openai_service.latest_message_content
+                )
             else:
                 raise Exception("Too many bad formatting versions")
 
@@ -145,13 +149,46 @@ class CodespeakService(BaseModel):
         return msg
 
     @staticmethod
+    def make_inference(function_lite: FunctionLite) -> str:
+        path = "/v1/inferences/make"
+        data = {
+            "function_lite": function_lite.dict(),
+            "api": "harmonic",
+        }
+        response = requests.post(f"{url}{path}", json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(
+                "couldn't make inference with codespeak api:",
+                response.text,
+            )
+
+    @staticmethod
+    def fetch_embedding_results(document: str) -> List[dict] | None:
+        api_keys = _settings.get_api_keys()
+        harmonic_api_key = api_keys.get("harmonic", None)
+        if harmonic_api_key is None:
+            return None
+        path = "/query_for_results"
+        data = {
+            "document": document,
+        }
+        response = requests.post(f"{url}{path}", json=data)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            raise Exception(
+                "couldn't get api schema from codespeak api: ",
+                response.text,
+            )
+
+    @staticmethod
     def fetch_relevant_api_schemas(document: str) -> List[dict] | None:
         api_keys = _settings.get_api_keys()
         harmonic_api_key = api_keys.get("harmonic", None)
         if harmonic_api_key is None:
             return None
-        url = "http://localhost:8000"
-        # url = "codespeak-api-production.up.railway.app"
         path = "/query"
         data = {
             "document": document,

@@ -36,6 +36,7 @@ class OpenAIService(BaseModel):
     model: str
     messages: List[Message]
     num_retries: int = 0
+    router_mode: bool = False
 
     @staticmethod
     def with_defaults():
@@ -50,14 +51,29 @@ class OpenAIService(BaseModel):
             num_retries=0,
         )
 
+    @staticmethod
+    def with_system_message(msg: str):
+        return OpenAIService(
+            model=_settings.get_openai_model(),
+            messages=[
+                Message(role=Roles.system(), content=msg),
+            ],
+            num_retries=0,
+        )
+
     def json_messages(self):
         return [m.dict() for m in self.messages]
 
-    def send_user_message(self, content: str) -> str:
+    def send_user_message(self, content: str) -> None:
         self.messages.append(Message(role=Roles.user(), content=content))
         completion = self.get_completion()
         self.add_message(content=completion, role=Roles.assistant())
-        return completion
+
+    @property
+    def latest_message_content(self) -> str:
+        if len(self.messages) == 0:
+            raise Exception("no messages")
+        return self.messages[-1].content
 
     def add_message(self, content: str, role: str):
         self.messages.append(Message(role=role, content=content))
@@ -69,11 +85,16 @@ class OpenAIService(BaseModel):
                 "OpenAI API key not configured, use codespeak.set_openai_key() to set it, or load an env variable OPENAI_API_KEY",
             )
         openai.api_key = _settings.get_openai_api_key()
+        if self.router_mode:
+            openai.api_base = "https://openrouter.ai/api/v1"
+            openai.api_key = "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"
         try:
+            referrer = "https://github.com/nateshirley/codespeak"
             response: Any = openai.ChatCompletion.create(
                 model=self.model,
                 messages=self.json_messages(),
                 stream=True,
+                headers={"HTTP-Referer": referrer} if self.router_mode else None,
             )
             result = ""
             print("\n\n------MAKING INFERENCE------\n\n")

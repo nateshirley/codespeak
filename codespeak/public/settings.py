@@ -28,6 +28,14 @@ def add_api(name: str, key: str):
         _settings.api_keys["harmonic"] = key
 
 
+def remove_api(name: str):
+    api_name = name.lower()
+    if api_name == "openai":
+        set_openai_api_key("")
+    elif api_name == "harmonic":
+        _settings.api_keys["harmonic"] = None
+
+
 def manually_set_abspath_to_project_root(abspath: str):
     _settings.abspath_to_project_root = abspath
 

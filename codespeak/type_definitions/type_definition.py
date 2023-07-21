@@ -58,3 +58,8 @@ class TypeDefinition(ABC, BaseModel):
 
     def reference_nested_custom_types(self) -> List["TypeDefinition"]:
         return []
+
+    def is_a_union_type(self) -> bool:
+        return self.type == "UnionType" or (
+            self.type == "TypingType" and self.qualname.lower() == "union"
+        )

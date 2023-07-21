@@ -10,6 +10,8 @@ def try_get_self_definition_for_for_inferred_function(
     function: Callable,
     params: MappingProxyType[str, inspect.Parameter],
 ) -> None | TypeDefinition:
+    if len(params) == 0:
+        return None
     first_key = next(iter(params))
     first_param = params[first_key]
     if first_key == "self" and first_param.annotation == inspect._empty:
