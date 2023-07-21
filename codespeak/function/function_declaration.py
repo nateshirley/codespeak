@@ -6,6 +6,10 @@ import textwrap
 from types import MappingProxyType
 from typing import Any, Callable, Dict, List, Optional, Set
 from pydantic import BaseModel
+from codespeak.function.function_declaration_lite import (
+    FunctionDeclarationLite,
+    TypeDefinitionLite,
+)
 from codespeak.public.inferred_exception import InferredExceptionHelpers
 from codespeak.type_definitions import classify
 from codespeak.type_definitions.import_definition import ImportDefinition
@@ -13,7 +17,7 @@ from codespeak.type_definitions.type_definition import TypeDefinition
 
 
 class FunctionDeclaration(BaseModel):
-    """Resources that are imputed from the function's declaration"""
+    """Resources that are imputed from an inferred function declaration"""
 
     name: str
     qualname: str
@@ -22,10 +26,17 @@ class FunctionDeclaration(BaseModel):
     source_code: str
     signature_text: str
     import_definitions: Dict[str, Set[ImportDefinition]]
-    self_definition: TypeDefinition | None = None
+    self_definition: TypeDefinition | None
+    return_type_definition: TypeDefinition | None
+    param_definitions: Set[TypeDefinition]
 
-    def as_incomplete_file(self) -> str:
-        return self.imports_text() + "\n" + self.signature_text + "\n"
+    def as_incomplete_file(self, include_docstring: bool = False) -> str:
+        incomplete_file = self.imports_text() + "\n" + self.signature_text
+        if include_docstring and len(self.docstring) > 0:
+            docstring = '"""' + self.docstring + '"""'
+            docstring = textwrap.indent(docstring, "    ")
+            incomplete_file += "\n" + docstring
+        return incomplete_file
 
     def as_query_document(self) -> str:
         return self.signature_text
@@ -51,6 +62,8 @@ class FunctionDeclaration(BaseModel):
         inferred_func: Callable,
         all_type_definitions: Set[TypeDefinition],
         self_definition: TypeDefinition | None,
+        return_type_definition: TypeDefinition | None,
+        param_definitions: Set[TypeDefinition],
     ) -> "FunctionDeclaration":
         source_code = textwrap.dedent(inspect.getsource(inferred_func))
 
@@ -68,6 +81,8 @@ class FunctionDeclaration(BaseModel):
                 else None,
             ),
             self_definition=self_definition,
+            return_type_definition=return_type_definition,
+            param_definitions=param_definitions,
             import_definitions={},
         )
 
@@ -76,6 +91,41 @@ class FunctionDeclaration(BaseModel):
             declaration.add_import_definition(_def)
 
         return declaration
+
+    def to_declaration_lite(self) -> FunctionDeclarationLite:
+        return_types: list[TypeDefinitionLite] = []
+        if self.return_type_definition is not None:
+            return_defs = self.return_type_definition.flatten()
+            for _def in return_defs:
+                if _def.is_a_union_type():
+                    continue
+                return_types.append(
+                    TypeDefinitionLite(
+                        module=_def.module, qualname=_def.qualname, type=_def.type
+                    )
+                )
+        params: list[TypeDefinitionLite] = []
+        for _def in self.param_definitions:
+            params.append(
+                TypeDefinitionLite(
+                    module=_def.module, qualname=_def.qualname, type=_def.type
+                )
+            )
+
+        return FunctionDeclarationLite(
+            name=self.name,
+            qualname=self.qualname,
+            module_name=self.module_name,
+            docstring=self.docstring,
+            source_code=self.source_code,
+            signature_text=self.signature_text,
+            imports_text=self.imports_text(),
+            query_document=self.as_query_document(),
+            incomplete_file=self.as_incomplete_file(),
+            is_method=True if self.self_definition is not None else False,
+            return_types=return_types,
+            params=params,
+        )
 
 
 def flatten_type_definitions(

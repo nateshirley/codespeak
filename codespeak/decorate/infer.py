@@ -39,11 +39,11 @@ def infer(func):
             return function._infer(args, kwargs)
 
     has_executed = False
-    _assign_default_attributes(wrapper, func)
+    _assign_default_inferred_attributes(wrapper, func)
     return wrapper
 
 
-def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
+def _assign_default_inferred_attributes(wrapper: Callable, decorated_func: Callable):
     env = _settings.get_environment()
     setattr(wrapper, FunctionAttributes.is_prod, env == Environment.PROD)
     guarantee_abspath_to_project_root_exists(decorated_func)
@@ -66,6 +66,8 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
                 inferred_func=decorated_func,
                 all_type_definitions=function_definitions["all"],
                 self_definition=function_definitions["self"],
+                return_type_definition=function_definitions["return_type"],
+                param_definitions=function_definitions["params"],
             ),
         )
         setattr(

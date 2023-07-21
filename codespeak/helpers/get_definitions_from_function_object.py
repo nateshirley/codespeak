@@ -11,6 +11,8 @@ from codespeak.helpers.try_get_self_definition_for_for_inferred_function import 
 class DefinitionsForFunction(TypedDict):
     all: Set[TypeDefinition]
     self: TypeDefinition | None
+    params: Set[TypeDefinition]
+    return_type: TypeDefinition | None
 
 
 def get_definitions_from_function_object(
@@ -25,12 +27,21 @@ def get_definitions_from_function_object(
     )
     if self_definition:
         defs.add(self_definition)
+    param_defs: set[TypeDefinition] = set()
     for param in params.values():
         _def = param.annotation
         if _def is inspect.Signature.empty:
             continue
-        defs.add(classify.from_any(_def))
-    return_annotation = sig.return_annotation
-    if not return_annotation is inspect.Signature.empty:
-        defs.add(classify.from_any(return_annotation))
-    return {"all": defs, "self": self_definition}
+        param_def = classify.from_any(_def)
+        defs.add(param_def)
+        param_defs.add(param_def)
+    return_type_definition = None
+    if not sig.return_annotation is inspect.Signature.empty:
+        return_type_definition = classify.from_any(sig.return_annotation)
+        defs.add(return_type_definition)
+    return {
+        "all": defs,
+        "self": self_definition,
+        "params": param_defs,
+        "return_type": return_type_definition,
+    }
