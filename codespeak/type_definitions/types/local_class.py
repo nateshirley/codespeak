@@ -65,7 +65,7 @@ class LocalClass(TypeDefinition):
                 "module": self.module,
                 "source_code": self.source_code,
                 "bases": [base.annotate_in_local_class() for base in self.bases],
-                "type_hints": {
+                "attribute_types_map": {
                     key: value.annotate_in_local_class()
                     for key, value in self.type_hints.items()
                 },

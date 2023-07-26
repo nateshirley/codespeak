@@ -5,7 +5,11 @@ import shutil
 from typing import Any
 from importlib import import_module
 
-from codespeak.constants import metadata_file_prefix, codegen_dirname
+from codespeak.constants import (
+    metadata_file_prefix,
+    codespeak_dirname,
+    inferences_dirname,
+)
 
 # if run as command, assume that it's in the same directory as the codespeak_inferred directory
 # otherwise, get the rootpath and use that
@@ -16,14 +20,18 @@ def extract_modulepath(abs_filepath: str):
     path_parts = abs_filepath.split(os.sep)
 
     # Check if root_dir_name is in path_parts
-    if codegen_dirname not in path_parts:
+    if codespeak_dirname not in path_parts:
         raise ValueError(
-            f"Root directory '{codegen_dirname}' not found in the filepath"
+            f"Root directory '{codespeak_dirname}' not found in the filepath"
+        )
+    if inferences_dirname not in path_parts:
+        raise ValueError(
+            f"Root directory '{inferences_dirname}' not found in the filepath"
         )
 
     # Find the index of root_dir_name in path_parts
     # add one to get the index of the first part after root_dir_name
-    root_index = path_parts.index(codegen_dirname) + 1
+    root_index = path_parts.index(inferences_dirname) + 1
 
     # Keep only the parts from root_dir_name up to the second last part (excluding the filename)
     module_parts = path_parts[root_index:-1]
@@ -109,7 +117,7 @@ def check_function_exists(modulepath: str, func_qualname: str):
 def codegen_directory_abspath() -> str:
     cwd = os.getcwd()
     # Look for "codespeak_inferred" in the current directory
-    expected_path = os.path.join(cwd, codegen_dirname)
+    expected_path = os.path.join(cwd, f"{codespeak_dirname}/{inferences_dirname}")
     if not os.path.isdir(expected_path):
         raise Exception(
             f"Couldn't find 'codespeak_inferred' directory, run from project root that contains 'codespeak_inferred'"

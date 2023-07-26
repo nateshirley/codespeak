@@ -7,7 +7,6 @@ import os
 import types
 from codespeak.type_definitions.type_definition import TypeDefinition
 from codespeak.type_definitions.types.local_class import LocalClass
-from codespeak.type_definitions.types.local_class_as_self import LocalClassAsSelf
 from codespeak.helpers.derive_module_qualname_for_object import (
     derive_module_qualname_for_object,
 )
@@ -139,22 +138,6 @@ def from_any(
         )
     else:
         raise Exception("unsure how to handle definition: ", definition)
-
-
-def from_self_class(self_class: Any, method_name: str) -> TypeDefinition:
-    _def = from_any(self_class)
-    if _def.type == "LocalClass":
-        return LocalClassAsSelf(
-            qualname=_def.qualname,
-            module=_def.module,
-            source_code=_def.source_code,
-            bases=_def.bases,
-            type_hints=_def.type_hints,
-            _def=_def,
-            method_name=method_name,
-        )
-    else:
-        return _def
 
 
 # technically get_type_hints can work on some installed types but we aren't using it for that atm

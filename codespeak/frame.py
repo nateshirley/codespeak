@@ -4,6 +4,7 @@ import sys
 from typing import Any, Callable, Dict, List, Set, Tuple
 
 from pydantic import BaseModel
+from codespeak.public.inferred_exception import InferredExceptionHelpers
 from codespeak.type_definitions import classify
 from codespeak.type_definitions.type_definition import TypeDefinition
 from codespeak.function.function_attributes import FunctionAttributes
@@ -30,6 +31,7 @@ class Frame(BaseModel):
             types_.update(_class.custom_types())
         for parent in self.parents:
             types_.update(parent.custom_types())
+        types_.update(InferredExceptionHelpers.annotate())
         return types_
 
     def printable_custom_types(self) -> str:

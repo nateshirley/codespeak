@@ -17,11 +17,9 @@ from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.frame_tests import FrameTests
 from codespeak.frame import Frame
-from codespeak.helpers.get_definitions_from_function_signature import (
-    get_definitions_from_function_signature,
+from codespeak.helpers.get_definitions_from_function_object import (
+    get_definitions_from_function_object,
 )
-
-# type inference remain on original function when no type hints are on the decorator
 
 
 def infer(func):
@@ -35,18 +33,17 @@ def infer(func):
             if not has_executed:
                 with Frame.get_manager().manage_for(wrapper):
                     func(*args, **kwargs)
-                function._try_add_self_to_frame(args, kwargs)
                 has_executed = True
             if function._is_testing:
                 return function.execute_latest_inference(*args, **kwargs)
             return function._infer(args, kwargs)
 
     has_executed = False
-    _assign_default_attributes(wrapper, func)
+    _assign_default_inferred_attributes(wrapper, func)
     return wrapper
 
 
-def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
+def _assign_default_inferred_attributes(wrapper: Callable, decorated_func: Callable):
     env = _settings.get_environment()
     setattr(wrapper, FunctionAttributes.is_prod, env == Environment.PROD)
     guarantee_abspath_to_project_root_exists(decorated_func)
@@ -61,21 +58,23 @@ def _assign_default_attributes(wrapper: Callable, decorated_func: Callable):
     elif env == _settings.Environment.DEV:
         file_service = FunctionFileService.from_decorated_func(decorated_func)
         setattr(wrapper, FunctionAttributes.file_service, file_service)
-        signature_definitions = get_definitions_from_function_signature(
-            inspect.signature(decorated_func)
-        )
+        function_definitions = get_definitions_from_function_object(decorated_func)
         setattr(
             wrapper,
             FunctionAttributes.declaration,
-            FunctionDeclaration.from_inferred_func(
-                decorated_func, signature_definitions
+            FunctionDeclaration.from_inferred_func_declaration(
+                inferred_func=decorated_func,
+                all_type_definitions=function_definitions["all"],
+                self_definition=function_definitions["self"],
+                return_type_definition=function_definitions["return_type"],
+                param_definitions=function_definitions["params"],
             ),
         )
         setattr(
             wrapper,
             FunctionAttributes.frame,
             Frame(
-                type_definitions=signature_definitions,
+                type_definitions=function_definitions["all"],
                 tests=FrameTests(),
                 parents=[Frame.for_module(decorated_func.__module__)],
             ),

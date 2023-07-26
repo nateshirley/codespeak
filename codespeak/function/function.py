@@ -3,7 +3,9 @@ import json
 from typing import Any, Callable, Dict, List, ClassVar, Tuple
 from codespeak import executor
 from codespeak.function.function_declaration import FunctionDeclaration
+from codespeak.function.function_lite import FunctionLite
 from codespeak.helpers.self_type import self_type_if_exists
+from codespeak.inference.api_inference_engine import APIInferenceEngine
 from codespeak.inference.inference_engine import InferenceEngine, TestFunction
 from codespeak.inference.codespeak_service import CodespeakService
 from codespeak.frame import Frame
@@ -17,6 +19,7 @@ from codespeak.function.helper_types.make_inference_response import (
 from codespeak.function.function_manager import FunctionManager
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.clean import clean
+from codespeak.function.function_declaration_lite import FunctionDeclarationLite
 
 
 class Function:
@@ -64,6 +67,11 @@ class Function:
             )
         return self.logic(*args, **kwargs)
 
+    def _fetch_relevant_api_schemas(self) -> List[Dict] | None:
+        return CodespeakService.fetch_relevant_api_schemas(
+            self.declaration.as_query_document()
+        )
+
     def make_inference(
         self,
         args: List[Any] | None = None,
@@ -73,7 +81,6 @@ class Function:
         """Explicitly make a new inference for a function. If using a method, must pass args to attach self type."""
         args = args or []
         kwargs = kwargs or {}
-        self._try_add_self_to_frame(tuple(args), kwargs)
         return self._make_inference(
             args=args,
             kwargs=kwargs,
@@ -88,41 +95,63 @@ class Function:
     ) -> MakeInferenceResponse:
         if _settings.get_environment() == _settings.Environment.PROD:
             raise Exception("Make is not available in production.")
-        inference_engine = InferenceEngine(
-            function_declaration=self.declaration,
-            digest=self._digest,
+        api_keys = _settings.get_api_keys()
+        harmonic_api_key = api_keys.get("harmonic", None)
+        if harmonic_api_key is None:
+            inference_engine = InferenceEngine(
+                function_declaration=self.declaration,
+                digest=self._digest,
+                codespeak_service=CodespeakService.with_defaults(
+                    function_lite=self.to_function_lite()
+                ),
+                file_service=self._file_service,
+                should_execute=should_execute,
+                test_functions=self.frame.tests.test_functions,
+                args=list(args),
+                kwargs=kwargs,
+            )
+            inference = inference_engine.make_inference()
+            logic = executor.load_generated_logic_from_module_qualname(
+                module_qualname=self._file_service.generated_module_qualname,
+                func_name=self._file_service.generated_entrypoint,
+            )
+            setattr(self.func, FunctionAttributes.logic, logic)
+            return MakeInferenceResponse(
+                execution_result=inference.execution_result,
+                source_code=inference_engine.latest_source_code,
+            )
+        else:
+            return self._make_api_inference(tuple(args), kwargs)
+
+    def _make_api_inference(
+        self, args: Tuple[Any], kwargs: Dict[str, Any]
+    ) -> MakeInferenceResponse:
+        function_lite = self.to_function_lite()
+        api_inference_engine = APIInferenceEngine(
+            function_lite=function_lite,
+            api="harmonic",
             codespeak_service=CodespeakService.with_defaults(
-                function_declaration=self.declaration, frame=self.frame
+                function_lite=function_lite,
             ),
+            digest=self._digest,
             file_service=self._file_service,
-            should_execute=should_execute,
-            test_functions=self.frame.tests.test_functions,
-            args=list(args),
+            args=args,
             kwargs=kwargs,
         )
-        inference = inference_engine.make_inference()
-        logic = executor.load_generated_logic_from_module_qualname(
-            module_qualname=self._file_service.generated_module_qualname,
-            func_name=self._file_service.generated_entrypoint,
-        )
-        setattr(self.func, FunctionAttributes.logic, logic)
+        inference = api_inference_engine.make_inference()
         return MakeInferenceResponse(
             execution_result=inference.execution_result,
-            source_code=inference_engine.latest_source_code,
+            source_code=api_inference_engine.latest_source_code,
         )
 
     def inference_inputs(self) -> str:
         inputs = {
-            "incomplete_file": self.declaration.as_incomplete_file(),
+            "incomplete_file": self.declaration.as_incomplete_file(
+                include_docstring=False
+            ),
             "custom_types": self.frame.custom_types(),
         }
         return json.dumps(inputs, indent=4)
-
-    def _try_add_self_to_frame(self, args: Tuple[Any], kwargs: Dict[str, Any]):
-        if self.declaration.self_definition is None:
-            self_type = self_type_if_exists(self.func, args, kwargs)
-            if self_type is not None:
-                self.declaration.try_add_self_definition(self_type)
 
     def should_infer_new_source_code(self) -> bool:
         if not self._file_service.does_previous_inference_exist():
@@ -143,10 +172,16 @@ class Function:
                 should_execute=True,
             )
             if _settings.should_auto_clean():
-                clean(_settings.abspath_to_codegen_dir())
+                clean(_settings.abspath_to_inferences_dir())
             return inference.execution_result
         else:
             return self.execute_latest_inference(*args, **kwargs)
+
+    def to_function_lite(self) -> FunctionLite:
+        return FunctionLite(
+            declaration=self.declaration.to_declaration_lite(),
+            custom_types=self.frame.custom_types(),
+        )
 
     @property
     def _is_testing(self) -> bool:
