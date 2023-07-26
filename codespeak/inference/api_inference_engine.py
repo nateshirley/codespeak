@@ -1,4 +1,5 @@
-from typing import Any, Dict, List
+import asyncio
+from typing import Any, Dict, List, Tuple
 from pydantic import BaseModel
 from codespeak.executor import execute_unchecked
 from codespeak.function.function_digest import FunctionDigest
@@ -24,21 +25,24 @@ class APIInferenceEngine(BaseModel):
     function_lite: FunctionLite
     codespeak_service: CodespeakService
     file_service: FunctionFileService
-    args: List[Any]
+    args: Tuple[Any, ...]
     kwargs: Dict[str, Any]
     latest_source_code: str = ""
     digest: FunctionDigest
 
     def make_inference(self) -> MakeInferenceResponse:
-        source_code = CodespeakService.make_inference(self.function_lite)
+        source_code = asyncio.run(CodespeakService.make_inference(self.function_lite))
         self.latest_source_code = source_code
-        self.write_inference()
+        # self.write_inference()
         # source_code = self.codespeak_service.generate_source_code()
-        execution_result = self.execute_inference()
+        # execution_result = self.execute_inference()
         return MakeInferenceResponse(
-            execution_result=execution_result.result,
+            execution_result=None,  # execution_result.result,
             source_code=self.latest_source_code,
         )
+
+    # i'll have the option to reload it and execute it with a load, or just execute the source with exec
+    # i'd probably rather reload it so I know it's working in its natural habitat, but that doesn't matter right now
 
     def write_inference(self) -> None:
         self.file_service.write_logic(self.latest_source_code)

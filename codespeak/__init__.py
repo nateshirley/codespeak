@@ -13,6 +13,7 @@ from .public.settings import (
     remove_api,
 )
 from .public.dot_get import dot_get
+from .public.rest_requests.get import get
 from .public.example_return import example
 from .public.inferred_exception import InferredException
 from .module_frame import ModuleFrame
