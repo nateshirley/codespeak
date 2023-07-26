@@ -1,6 +1,7 @@
 import json
 import re
 from typing import List
+import httpx
 from pydantic import BaseModel
 from codespeak.frame import Frame
 from codespeak.function.function_declaration_lite import FunctionDeclarationLite
@@ -148,21 +149,49 @@ class CodespeakService(BaseModel):
         msg += "Use the test's source code to further understand the intended design of the incomplete function, and reference the information in my original message to try again to complete the original task. Be sure to think about the root cause of the test failure and adjust your response to better align with the intent of the incomplete function."
         return msg
 
+    # json_data = json.dumps(data).encode()
+    # response = client.post(url=f"{url}{path}", json=data)
+    # with httpx.stream("POST", url, timeout=30.0) as r:
+    # response = client.post("http://httpbin.org/post", json=data)
+    # then you can read the response as a stream
+
     @staticmethod
-    def make_inference(function_lite: FunctionLite) -> str:
+    async def make_inference(function_lite: FunctionLite) -> str:
         path = "/v1/inferences/make"
         data = {
             "function_lite": function_lite.dict(),
             "api": "harmonic",
         }
-        response = requests.post(f"{url}{path}", json=data)
-        if response.status_code == 200:
-            return response.json()
-        else:
-            raise Exception(
-                "couldn't make inference with codespeak api:",
-                response.text,
-            )
+        response_text = ""
+        _url = f"{url}{path}"
+        async with httpx.AsyncClient() as client:
+            async with client.stream(
+                "POST", url=_url, json=data, timeout=30
+            ) as response:
+                async for chunk in response.aiter_bytes():
+                    text = chunk.decode()
+                    response_text += text
+                    print(text, end="")
+        print("\n")
+        return response_text
+        # with httpx.Client() as client:
+        # response = requests.post(f"{url}{path}", json=data, stream=True)
+        # for chunk in r.iter_raw():  # or, for line in r.iter_lines():
+        #     print(chunk)
+        # for chunk in response.iter_content(1024):
+        #     if chunk:
+        #     text = chunk  # chunk.decode()
+        #     print(text, flush=True)
+        #     response_text += text
+        # else:
+        #     print("ooooh no")
+        # if response.status_code == 200:
+        #     return response.json()
+        # else:
+        #     raise Exception(
+        #         "couldn't make inference with codespeak api:",
+        #         response.text,
+        #     )
 
     @staticmethod
     def fetch_embedding_results(document: str) -> List[dict] | None:

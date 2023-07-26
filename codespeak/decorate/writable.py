@@ -1,5 +1,6 @@
 from functools import wraps
 import inspect
+import textwrap
 from typing import Any, Callable, Dict, List, Tuple, TypeVar
 from functools import wraps
 from codespeak import executor
@@ -9,6 +10,7 @@ from codespeak.function.function_file_service import (
 from codespeak.function.function_declaration import (
     FunctionDeclaration,
 )
+from codespeak.function.writable_function import WritableFunction
 from codespeak.helpers.guarantee_abspath_to_root_exists import (
     guarantee_abspath_to_project_root_exists,
 )
@@ -22,23 +24,18 @@ from codespeak.helpers.get_definitions_from_function_object import (
     get_definitions_from_function_object,
 )
 from codespeak.decorate.infer import _assign_default_inferred_attributes
-
-"""
-1. get source file 
-"""
+from codespeak.decorate.writable_transform import replace_function
 
 
 def writable(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        function = Function(wrapper)
-        function_file = inspect.getsourcefile(func)
-        source_code = inspect.getsource(func)
-        print("\nsource code:\n", source_code)
-        print(function_file)
-        # with Frame.get_manager().manage_for(wrapper):
-        #     func(*args, **kwargs)
-        return func(*args, **kwargs)
+        writable_function = WritableFunction(wrapper)
+        should_write = should_write_function(func)
+        if should_write:
+            return writable_function.write(func, args, kwargs)
+        else:
+            return func(*args, **kwargs)
 
     _assign_default_inferred_attributes(wrapper, func)
     return wrapper
@@ -47,13 +44,17 @@ def writable(func):
 import libcst as cst
 from libcst import MaybeSentinel, RemovalSentinel
 from libcst.metadata import ProviderT, ExpressionContextProvider, ExpressionContext
-from libcst.helpers import get_docstring
+
+# from libcst._nodes.module import get_docstring
 
 
-class PassCheckVisitor(cst.CSTVisitor):
+class ShouldWriteVisitor(cst.CSTVisitor):
+    def __init__(self) -> None:
+        self.should_write = False
+
     def visit_FunctionDef(self, node: cst.FunctionDef) -> None:
         body = node.body.body
-        docstring = get_docstring(node, clean=False)
+        docstring = node.get_docstring(clean=True)
 
         # Remove the leading docstring if it exists
         if docstring is not None:
@@ -65,4 +66,12 @@ class PassCheckVisitor(cst.CSTVisitor):
             if len(first_statement.body) == 1 and isinstance(
                 first_statement.body[0], cst.Pass
             ):
-                print(f"Function {node.name.value} only contains 'pass'.")
+                self.should_write = True
+
+
+def should_write_function(func: Callable) -> bool:
+    source = inspect.getsource(func)
+    module = cst.parse_module(source)
+    visitor = ShouldWriteVisitor()
+    module.visit(visitor)
+    return visitor.should_write

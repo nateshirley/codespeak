@@ -121,23 +121,28 @@ class Function:
                 source_code=inference_engine.latest_source_code,
             )
         else:
-            function_lite = self.to_function_lite()
-            api_inference_engine = APIInferenceEngine(
+            return self._make_api_inference(tuple(args), kwargs)
+
+    def _make_api_inference(
+        self, args: Tuple[Any], kwargs: Dict[str, Any]
+    ) -> MakeInferenceResponse:
+        function_lite = self.to_function_lite()
+        api_inference_engine = APIInferenceEngine(
+            function_lite=function_lite,
+            api="harmonic",
+            codespeak_service=CodespeakService.with_defaults(
                 function_lite=function_lite,
-                api="harmonic",
-                codespeak_service=CodespeakService.with_defaults(
-                    function_lite=function_lite,
-                ),
-                digest=self._digest,
-                file_service=self._file_service,
-                args=list(args),
-                kwargs=kwargs,
-            )
-            inference = api_inference_engine.make_inference()
-            return MakeInferenceResponse(
-                execution_result=inference.execution_result,
-                source_code="",
-            )
+            ),
+            digest=self._digest,
+            file_service=self._file_service,
+            args=args,
+            kwargs=kwargs,
+        )
+        inference = api_inference_engine.make_inference()
+        return MakeInferenceResponse(
+            execution_result=inference.execution_result,
+            source_code=api_inference_engine.latest_source_code,
+        )
 
     def inference_inputs(self) -> str:
         inputs = {
