@@ -1,51 +1,46 @@
 from functools import wraps
 import inspect
-import textwrap
 from typing import Any, Callable, Dict, List, Tuple, TypeVar
 from functools import wraps
-from codespeak import executor
-from codespeak.function.function_file_service import (
-    FunctionFileService,
-)
 from codespeak.function.function_declaration import (
     FunctionDeclaration,
 )
 from codespeak.function.writable_function import WritableFunction
-from codespeak.helpers.guarantee_abspath_to_root_exists import (
-    guarantee_abspath_to_project_root_exists,
-)
-from codespeak.settings import _settings
+from codespeak.settings import settings
 from codespeak.settings.environment import Environment
-from codespeak.function import Function
 from codespeak.function.function_attributes import FunctionAttributes
 from codespeak.frame_tests import FrameTests
 from codespeak.frame import Frame
 from codespeak.helpers.get_definitions_from_function_object import (
     get_definitions_from_function_object,
 )
-from codespeak.decorate.infer import _assign_default_inferred_attributes
-from codespeak.decorate.writable_transform import replace_function
+from codespeak.settings.settings import Environment
 
 
 def writable(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
-        writable_function = WritableFunction(wrapper)
-        should_write = should_write_function(func)
-        if should_write:
-            return writable_function.write(func, args, kwargs)
-        else:
-            return func(*args, **kwargs)
+        if wrapper._is_dev:  # type: ignore
+            if should_write_function(func):
+                writable_function = WritableFunction(wrapper)
+                return writable_function._write(get_source_file(func))
+        return func(*args, **kwargs)
 
-    _assign_default_inferred_attributes(wrapper, func)
+    _assign_default_function_attributes(wrapper, func)
+
     return wrapper
+
+
+def get_source_file(function: Callable) -> str:
+    ff = inspect.getsourcefile(function)
+    if ff is None:
+        raise ValueError("Function must be defined in a file")
+    return ff
 
 
 import libcst as cst
 from libcst import MaybeSentinel, RemovalSentinel
 from libcst.metadata import ProviderT, ExpressionContextProvider, ExpressionContext
-
-# from libcst._nodes.module import get_docstring
 
 
 class ShouldWriteVisitor(cst.CSTVisitor):
@@ -75,3 +70,30 @@ def should_write_function(func: Callable) -> bool:
     visitor = ShouldWriteVisitor()
     module.visit(visitor)
     return visitor.should_write
+
+
+def _assign_default_function_attributes(wrapper: Callable, decorated_func: Callable):
+    env = settings.get_environment()
+    setattr(wrapper, FunctionAttributes.is_dev, env != Environment.PROD)
+    if env == Environment.DEV:
+        function_definitions = get_definitions_from_function_object(decorated_func)
+        setattr(
+            wrapper,
+            FunctionAttributes.declaration,
+            FunctionDeclaration.from_inferred_func_declaration(
+                inferred_func=decorated_func,
+                all_type_definitions=function_definitions["all"],
+                self_definition=function_definitions["self"],
+                return_type_definition=function_definitions["return_type"],
+                param_definitions=function_definitions["params"],
+            ),
+        )
+        setattr(
+            wrapper,
+            FunctionAttributes.frame,
+            Frame(
+                type_definitions=function_definitions["all"],
+                tests=FrameTests(),
+                parents=[Frame.for_module(decorated_func.__module__)],
+            ),
+        )

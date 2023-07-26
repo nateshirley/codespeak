@@ -2,7 +2,7 @@ import inspect
 import os
 from typing import Any
 
-from codespeak.settings import _settings
+from codespeak.settings import settings
 
 
 def derive_module_qualname_for_object(_object: Any):
@@ -11,7 +11,7 @@ def derive_module_qualname_for_object(_object: Any):
     if not source_file:
         raise Exception("unable to get source file for func: ", _object.__name__)
     return derive_module_qualname_from_filepaths(
-        source_file, _settings.get_abspath_to_project_root()
+        source_file, settings.get_abspath_to_project_root()
     )
 
 

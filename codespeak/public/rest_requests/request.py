@@ -1,7 +1,7 @@
 from typing import Any, Callable, Dict
 from pydantic import BaseModel
 from codespeak.apis.api_metadata import api_metadatas
-from codespeak.settings import _settings
+from codespeak.settings import settings
 
 
 class Request(BaseModel):
@@ -16,7 +16,7 @@ class Request(BaseModel):
     headers: Dict[str, Any]
 
     def get_api_key(self) -> str | None:
-        api_keys = _settings.get_api_keys()
+        api_keys = settings.get_api_keys()
         return api_keys.get(self.api, None)
 
     def authenticate(self):

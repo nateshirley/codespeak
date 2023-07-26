@@ -1,48 +1,66 @@
 import inspect
-import textwrap
-from typing import Any, Callable, Dict, List, Tuple
+import json
+from typing import Any, Callable, Dict, List, ClassVar, Tuple
+from codespeak.function.function_declaration import FunctionDeclaration
+from codespeak.function.function_lite import FunctionLite
+from codespeak.helpers.self_type import self_type_if_exists
 from codespeak.decorate.writable_transform import replace_function
-from codespeak.function.function import Function
-from codespeak.inference.api_inference_engine import MakeInferenceResponse
-
-sample_inference = textwrap.dedent(
-    """
-    def get_company(company_id: int):
-        path = "/companies/{id_or_urn}"
-        path_params = {"id_or_urn": str(company_id)}
-        return codespeak.get("harmonic", path, path_params=path_params)
-    """
-).strip("\n")
+from codespeak.inference.inference_engine import InferenceEngine
+from codespeak.frame import Frame
+from codespeak.function.function_attributes import FunctionAttributes
+from codespeak.function.function_declaration_lite import FunctionDeclarationLite
+from codespeak.settings import settings
 
 
-class WritableFunction(Function):
-    def write(
-        self, writable_func: Callable, args: Tuple[Any], kwargs: Dict[str, Any]
-    ) -> Any:
-        function_file = inspect.getsourcefile(writable_func)
-        if function_file is None:
+class WritableFunction:
+    func: Callable
+
+    def __init__(self, func: Callable) -> None:
+        if not hasattr(func, FunctionAttributes.frame):
+            raise Exception(
+                "No frame found. Make sure this is an inferred function—it should use codespeak's @infer decorator"
+            )
+        self.func = func
+
+    @property
+    def declaration(self) -> FunctionDeclaration:
+        return getattr(self.func, FunctionAttributes.declaration)
+
+    @property
+    def frame(self) -> Frame:
+        return Frame.for_function(self.func)
+
+    def _make_inference(self) -> str:
+        function_lite = self.to_function_lite()
+        api_identifier = settings.get_current_api_identifier()
+        if api_identifier is None:
+            raise ValueError("No api set. Add an api with codespeak.add_api()")
+        api_inference_engine = InferenceEngine(
+            function_lite=function_lite,
+            api_identifier=api_identifier,
+        )
+        return api_inference_engine.make_inference()
+
+    def source_file(self) -> str:
+        ff = inspect.getsourcefile(self.func)
+        if ff is None:
             raise ValueError("Function must be defined in a file")
-        print("function file:", function_file)
-        original_source = self.declaration.source_code
-        decorator = original_source.split("\n")[0]
-        # source = align(
-        #     f"""
-        #     def sample(s: str) -> str:
-        #         return s + "!"
-        #     """
-        # )
-        # inference = MakeInferenceResponse(
-        #     source_code=sample_inference, execution_result=None
-        # )
-        inference = self._make_api_inference(args, kwargs)
-        inference.source_code = decorator + "\n" + inference.source_code
-        # print("SOURCE:\n")
-        # print(inference.source_code)
-        # replace_function(
-        #     function_file, writable_func.__qualname__, inference.source_code
-        # )
-        return None  # inference.execution_result
+        return ff
 
+    def write(self) -> None:
+        self._write(self.source_file())
 
-def align(s: str) -> str:
-    return textwrap.dedent(s).strip("\n")
+    def _write(self, source_file: str) -> None:
+        inference = self._make_inference()
+        replace_function(source_file, self.func.__qualname__, inference)
+
+    def to_function_lite(self) -> FunctionLite:
+        return FunctionLite(
+            declaration=self.declaration.to_declaration_lite(),
+            custom_types=self.frame.custom_types(),
+        )
+
+    @staticmethod
+    def from_function_object(func: Callable[..., Any]) -> "WritableFunction":
+        """get classified Function object for an inferred function"""
+        return WritableFunction(func=func)

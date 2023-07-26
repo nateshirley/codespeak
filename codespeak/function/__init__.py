@@ -1,1 +1,1 @@
-from .function import Function
+from .writable_function import WritableFunction
